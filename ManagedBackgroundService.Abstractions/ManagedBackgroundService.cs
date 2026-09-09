@@ -41,6 +41,15 @@ public abstract class ManagedBackgroundService : BackgroundService
     public Status Status { get; private set; }
     public DateTime StatusDateTimeUtc { get; private set; }
     public Exception? Exception { get; private set; }
+    /// <summary>
+    /// causes a Disabled service to start its inner loop again (assuming it's not Stopped)
+    /// </summary>
+    public void Resume()
+    {
+        if (Status == Status.Stopped) throw new Exception("Can't resume a stopped BackgroundService; restart the app instead.");
+
+        Status = Status.Enabled;
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
