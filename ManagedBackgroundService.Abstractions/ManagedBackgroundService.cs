@@ -46,7 +46,8 @@ public abstract class ManagedBackgroundService : BackgroundService
     {
         try
         {
-            Status = Status.Enabled;            
+            Status = Status.Enabled;
+            StatusDateTimeUtc = DateTime.UtcNow;
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -62,7 +63,7 @@ public abstract class ManagedBackgroundService : BackgroundService
                     // this is where your main logic goes
                     Exception = null;
                     await ExecuteInternalAsync(stoppingToken);
-                    await Task.Delay(EnabledDelay, stoppingToken);
+                    await Task.Delay(EnabledDelay, stoppingToken);                    
                 }
                 catch (Exception exc)
                 {
@@ -73,13 +74,11 @@ public abstract class ManagedBackgroundService : BackgroundService
                     Exception = exc;
                 }                
             }
-
-            // if you make it here, inner loop exited
-            Status = Status.Stopped;
-            StatusDateTimeUtc = DateTime.UtcNow;
         }
         catch (Exception exc) when (exc is OperationCanceledException)
         {
+            Status = Status.Disabled;
+            StatusDateTimeUtc = DateTime.UtcNow;
             Logger.LogWarning("App is restarting, {type} job should resume", GetType().Name);
         }
         catch (Exception exc)
