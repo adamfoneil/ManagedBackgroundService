@@ -14,7 +14,7 @@ public enum Status
     /// </summary>
     Disabled = 2,
     /// <summary>
-    /// an exception escaped to the outer loop, app must be restarted
+    /// "crashed" -- an exception escaped to the outer loop, app must be restarted
     /// </summary>
     Stopped = 3
 }
@@ -35,8 +35,8 @@ public abstract class ManagedBackgroundService : BackgroundService
     /// <summary>
     /// defined pause time between inner loop cycles
     /// </summary>
-    protected abstract TimeSpan EnabledDelay { get; }
-    protected virtual TimeSpan DisabledDelay { get => TimeSpan.FromMinutes(1); }
+    protected virtual TimeSpan EnabledDelay { get => TimeSpan.FromSeconds(7); }
+    protected virtual TimeSpan DisabledDelay { get => TimeSpan.FromSeconds(30); }
 
     public Status Status { get; private set; }
     public DateTime StatusDateTimeUtc { get; private set; }
@@ -46,9 +46,11 @@ public abstract class ManagedBackgroundService : BackgroundService
     /// </summary>
     public void Resume()
     {
-        if (Status == Status.Stopped) throw new Exception("Can't resume a stopped BackgroundService; restart the app instead.");
+        if (Status == Status.Stopped) throw new InvalidOperationException("Can't resume a stopped BackgroundService; restart the app instead.");
 
         Status = Status.Enabled;
+        StatusDateTimeUtc = DateTime.UtcNow;
+        Logger.LogInformation("Resumed background service {type}", GetType().Name);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
