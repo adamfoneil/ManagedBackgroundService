@@ -78,9 +78,9 @@ public abstract class ManagedBackgroundService : BackgroundService
                 {
                     // catching here enables you to keep the main loop running, so you can possibly fix whatever issue happened, without restarting app
                     Status = Status.Disabled;
-                    StatusDateTimeUtc = DateTime.UtcNow;
-                    Logger.LogError(exc, "Error in inner loop, background service {type} disabled", GetType().Name);
+                    StatusDateTimeUtc = DateTime.UtcNow;                    
                     Exception = exc;
+                    Logger.LogError(exc, "Error in inner loop, background service {type} disabled", GetType().Name);
                 }                
             }
         }
