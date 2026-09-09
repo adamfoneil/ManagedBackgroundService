@@ -86,6 +86,7 @@ public abstract class ManagedBackgroundService : BackgroundService
         }
         catch (Exception exc) when (exc is OperationCanceledException)
         {
+            // this can happen during normal restarts
             Status = Status.Disabled;
             StatusDateTimeUtc = DateTime.UtcNow;
             Logger.LogWarning("App is restarting, {type} job should resume", GetType().Name);
