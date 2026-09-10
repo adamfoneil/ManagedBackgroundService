@@ -33,13 +33,13 @@ public abstract class ManagedBackgroundService : BackgroundService
     /// </summary>
     protected abstract Task ExecuteInternalAsync(CancellationToken stoppingToken);    
     /// <summary>
-    /// defined pause time between inner loop cycles
+    /// defined pause time between inner loop cycles -- gives the machine a bit of a "breather" between executions
     /// </summary>
-    protected virtual TimeSpan EnabledDelay { get => TimeSpan.FromSeconds(2); }
+    protected virtual TimeSpan RunningDelay { get => TimeSpan.FromSeconds(2); }
     /// <summary>
-    /// when disabled, how long do we wait until checking again if we're enabled?
+    /// when paused, how long do we wait until checking again if we're running?
     /// </summary>
-    protected virtual TimeSpan DisabledDelay { get => TimeSpan.FromSeconds(10); }
+    protected virtual TimeSpan PausedDelay { get => TimeSpan.FromSeconds(10); }
 
     public Status Status { get; private set; }
     public DateTime StatusDateTimeUtc { get; private set; }
@@ -77,18 +77,18 @@ public abstract class ManagedBackgroundService : BackgroundService
             while (!stoppingToken.IsCancellationRequested)
             {
                 if (Status != Status.Running)
-                {
+                {                    
                     // if not enabled, don't execute main job, and don't spend too many cycles waiting for repair
-                    await Task.Delay(DisabledDelay, stoppingToken);
+                    await Task.Delay(PausedDelay, stoppingToken);
                     continue;
                 }
 
                 try
-                {
+                {                    
                     // this is where your main logic goes
                     Exception = null;
                     await ExecuteInternalAsync(stoppingToken);
-                    await Task.Delay(EnabledDelay, stoppingToken);                    
+                    await Task.Delay(RunningDelay, stoppingToken);                    
                 }
                 catch (Exception exc)
                 {
