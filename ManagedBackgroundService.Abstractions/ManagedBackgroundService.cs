@@ -107,7 +107,7 @@ public abstract class ManagedBackgroundService : BackgroundService
         }
         catch (Exception exc)
         {
-            // Catching here prevents impacting the host, but app must be restarted (you can't resume from this state)
+            // Catching here prevents impacting the host, but app must be restarted (you can't resume from this state because we've exited the core while loop)
             Status = Status.Crashed;
             StatusDateTimeUtc = DateTime.Now;
             Exception = exc;
