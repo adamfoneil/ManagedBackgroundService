@@ -6,7 +6,7 @@ public abstract class ScheduledBackgroundService(
     ILoggerFactory loggerFactory,
     TimeProvider timeProvider) : ManagedBackgroundService(loggerFactory)
 {
-    private readonly TimeProvider _timeProvider = timeProvider;
+    protected readonly TimeProvider TimeProvider = timeProvider;
 
     protected abstract DateTimeOffset GetNextRunTime(DateTimeOffset currentTime);
 
@@ -16,7 +16,7 @@ public abstract class ScheduledBackgroundService(
 
     protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
-        var now = _timeProvider.GetUtcNow();
+        var now = TimeProvider.GetUtcNow();
 
         if (NextRunTime == default)
         {
@@ -25,11 +25,19 @@ public abstract class ScheduledBackgroundService(
 
         if (now < NextRunTime)
         {
+            var delay = NextRunTime - now;
+            await Task.Delay(delay, TimeProvider, stoppingToken);
             return;
         }
 
         await ExecuteScheduledAsync(stoppingToken);
 
-        NextRunTime = GetNextRunTime(NextRunTime);
-    }    
+        var nextRunTime = GetNextRunTime(NextRunTime);
+        if (nextRunTime <= NextRunTime)
+        {
+            throw new InvalidOperationException($"{GetType().Name} returned a next run time that does not move forward. Current: {NextRunTime:O}, Next: {nextRunTime:O}");
+        }
+
+        NextRunTime = nextRunTime;
+    }
 }
