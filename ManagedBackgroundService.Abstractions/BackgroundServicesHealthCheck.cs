@@ -16,7 +16,7 @@ public class BackgroundServicesHealthCheck(IServiceProvider serviceProvider) : I
             .ToArray();
 
         var unhealthy = services
-            .Where(s => s.Status != Status.Enabled)
+            .Where(s => s.Status != Status.Running)
             .Select(s => new { s.GetType().Name, Status = s.Status.ToString() })
             .ToArray();
 
