@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace ManagedBackgroundService.Abstractions;
+namespace ManagedBackgroundServices.Abstractions;
 
 public static class ServiceExtensions
 {

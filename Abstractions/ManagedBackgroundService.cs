@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace ManagedBackgroundService.Abstractions;
+namespace ManagedBackgroundServices.Abstractions;
 
 public enum Status
 {
@@ -109,7 +109,7 @@ public abstract class ManagedBackgroundService : BackgroundService
         {
             // Catching here prevents impacting the host, but app must be restarted (you can't resume from this state because we've exited the core while loop)
             Status = Status.Crashed;
-            StatusDateTimeUtc = DateTime.Now;
+            StatusDateTimeUtc = DateTime.UtcNow;
             Exception = exc;
             Logger.LogError(exc, "Error in outer loop, background service {type} stopped at {now}", GetType().Name, StatusDateTimeUtc);
         }

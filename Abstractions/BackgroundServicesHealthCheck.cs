@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace ManagedBackgroundService.Abstractions;
+namespace ManagedBackgroundServices.Abstractions;
 
 public class BackgroundServicesHealthCheck(IServiceProvider serviceProvider) : IHealthCheck
 {
