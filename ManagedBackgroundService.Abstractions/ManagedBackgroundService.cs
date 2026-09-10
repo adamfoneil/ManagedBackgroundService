@@ -72,7 +72,7 @@ public abstract class ManagedBackgroundService : BackgroundService
         {
             Status = Status.Running;
             StatusDateTimeUtc = DateTime.UtcNow;
-            Logger.LogInformation("Started background service {type}", GetType().Name);
+            Logger.LogInformation("Started background service {type} started at {now} UTC", GetType().Name, StatusDateTimeUtc);
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -92,10 +92,10 @@ public abstract class ManagedBackgroundService : BackgroundService
                 }
                 catch (Exception exc)
                 {
-                    Exception = exc;
-                    Logger.LogError(exc, "Error in inner loop, background service {type} disabled", GetType().Name);
                     // catching here enables you to keep the main loop running, so you can possibly fix whatever issue happened, without restarting app
-                    Pause();                                        
+                    Pause();
+                    Exception = exc;
+                    Logger.LogError(exc, "Error in inner loop, background service {type} disabled at {now} UTC", GetType().Name, StatusDateTimeUtc);                    
                 }                
             }
         }
@@ -103,15 +103,15 @@ public abstract class ManagedBackgroundService : BackgroundService
         {
             // this happens during restarts/shutdown of host app
             Pause();
-            Logger.LogWarning("App is restarting or shutting down, background service {type} stopped", GetType().Name);
+            Logger.LogWarning("App is restarting or shutting down, background service {type} stopped at {now}", GetType().Name, StatusDateTimeUtc);
         }
         catch (Exception exc)
         {
-            // Catching here prevents impacting the host, but app must be restarted to resume job            
+            // Catching here prevents impacting the host, but app must be restarted (you can't resume from this state)
             Status = Status.Crashed;
             StatusDateTimeUtc = DateTime.Now;
             Exception = exc;
-            Logger.LogError(exc, "Error in outer loop, background service {type} stopped", GetType().Name);
+            Logger.LogError(exc, "Error in outer loop, background service {type} stopped at {now}", GetType().Name, StatusDateTimeUtc);
         }
     }
 }
