@@ -27,11 +27,11 @@ public abstract class ManagedBackgroundService : BackgroundService
     {
         Logger = loggerFactory.CreateLogger(GetType().FullName!);
     }
-    
+
     /// <summary>
     /// this is your custom logic for the background service
     /// </summary>
-    protected abstract Task ExecuteInternalAsync(CancellationToken stoppingToken);    
+    protected abstract Task ExecuteInternalAsync(CancellationToken stoppingToken);
     /// <summary>
     /// defined pause time between inner loop cycles -- gives the machine a bit of a "breather" between executions
     /// </summary>
@@ -44,7 +44,7 @@ public abstract class ManagedBackgroundService : BackgroundService
     public Status Status { get; private set; }
     public DateTime StatusDateTimeUtc { get; private set; }
     public Exception? Exception { get; private set; }
-    
+
     /// <summary>
     /// causes a Disabled service to start its inner loop again (assuming it's not Stopped)
     /// </summary>
@@ -76,27 +76,27 @@ public abstract class ManagedBackgroundService : BackgroundService
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                if (Status != Status.Running)
-                {                    
+                if (Status == Status.Paused)
+                {
                     // if not enabled, don't execute main job, and don't spend too many cycles waiting for repair
                     await Task.Delay(PausedDelay, stoppingToken);
                     continue;
                 }
 
                 try
-                {                    
+                {
                     // this is where your main logic goes
                     Exception = null;
                     await ExecuteInternalAsync(stoppingToken);
-                    await Task.Delay(RunningDelay, stoppingToken);                    
+                    await Task.Delay(RunningDelay, stoppingToken);
                 }
                 catch (Exception exc)
                 {
                     // catching here enables you to keep the main loop running, so you can possibly fix whatever issue happened, without restarting app
                     Pause();
                     Exception = exc;
-                    Logger.LogError(exc, "Error in inner loop, background service {type} paused at {now} UTC", GetType().Name, StatusDateTimeUtc);                    
-                }                
+                    Logger.LogError(exc, "Error in inner loop, background service {type} paused at {now} UTC", GetType().Name, StatusDateTimeUtc);
+                }
             }
         }
         catch (Exception exc) when (exc is OperationCanceledException)
