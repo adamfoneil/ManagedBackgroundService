@@ -16,7 +16,6 @@ public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory lo
 
     protected virtual TimeSpan EmptyQueueDelay => TimeSpan.FromSeconds(5);
     protected virtual TimeSpan ProcessingDelay => TimeSpan.Zero;
-
     protected virtual int DequeueBatchSize { get => 3; }
 
     protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
@@ -35,16 +34,16 @@ public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory lo
             {
                 try
                 {
-                    await ExecuteQueuedWorkAsync(msg, stoppingToken);
+                    await ExecuteQueuedWorkAsync(msg, stoppingToken);                    
                 }
                 catch (Exception exc)
                 {
                     Logger.LogError(exc, "Error in queue consumer {type} with {@message}", GetType().Name, msg);
                     await TrackPoisonMessageAsync(msg, exc);                    
                 }
-            }
-            
-            await Task.Delay(ProcessingDelay, stoppingToken);
+            }   
+                        
+            await Task.Delay(ProcessingDelay, stoppingToken);            
         }
     }
 }
