@@ -50,7 +50,7 @@ public abstract class ManagedBackgroundService : BackgroundService
     /// </summary>
     public void Resume()
     {
-        if (Status == Status.Crashed) throw new InvalidOperationException("Can't resume a stopped BackgroundService; restart the app instead.");
+        if (Status == Status.Crashed) throw new InvalidOperationException("Can't resume a crashed BackgroundService; restart the app instead.");
 
         Status = Status.Running;
         StatusDateTimeUtc = DateTime.UtcNow;
@@ -59,7 +59,7 @@ public abstract class ManagedBackgroundService : BackgroundService
 
     public void Pause()
     {
-        if (Status == Status.Crashed) throw new InvalidOperationException("Can't pause a stopped BackgroundService; restart the app instead.");
+        if (Status == Status.Crashed) throw new InvalidOperationException("Can't pause a crashed BackgroundService; restart the app instead.");
 
         Status = Status.Paused;
         StatusDateTimeUtc = DateTime.UtcNow;
@@ -111,7 +111,7 @@ public abstract class ManagedBackgroundService : BackgroundService
             Status = Status.Crashed;
             StatusDateTimeUtc = DateTime.UtcNow;
             Exception = exc;
-            Logger.LogError(exc, "Error in outer loop, background service {type} stopped at {now}", GetType().Name, StatusDateTimeUtc);
+            Logger.LogError(exc, "Error in outer loop, background service {type} crashed at {now}", GetType().Name, StatusDateTimeUtc);
         }
     }
 }
