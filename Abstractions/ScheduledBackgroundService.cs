@@ -18,25 +18,7 @@ public abstract class ScheduledBackgroundService(
     {
         var now = TimeProvider.GetUtcNow();
 
-        if (NextRunTime == default)
-        {
-            NextRunTime = GetNextRunTime(now);
-        }
-
-        if (now < NextRunTime)
-        {
-            var delay = NextRunTime - now;
-            await Task.Delay(delay, TimeProvider, stoppingToken);
-        }
-
-        await ExecuteScheduledAsync(stoppingToken);
-
-        var nextRunTime = GetNextRunTime(NextRunTime);
-
-        if (Logger.IsEnabled(LogLevel.Debug))
-        {
-            Logger.LogDebug("Next run time for {type} is {time}", GetType().Name, nextRunTime);
-        }
+        var nextRunTime = GetNextRunTime(now);
 
         if (nextRunTime <= NextRunTime)
         {
@@ -44,5 +26,13 @@ public abstract class ScheduledBackgroundService(
         }
 
         NextRunTime = nextRunTime;
+
+        if (now < NextRunTime)
+        {
+            await Task.Delay(NextRunTime - now, TimeProvider, stoppingToken);
+            if (stoppingToken.IsCancellationRequested) return;
+        }
+
+        await ExecuteScheduledAsync(stoppingToken);
     }
 }
