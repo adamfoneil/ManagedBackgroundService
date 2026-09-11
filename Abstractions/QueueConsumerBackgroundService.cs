@@ -8,7 +8,13 @@ public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory lo
 
     protected abstract Task ExecuteQueuedWorkAsync(TMessage message, CancellationToken stoppingToken);
 
-    protected virtual async Task TrackPoisonMessageAsync(TMessage message, Exception exception)
+    protected virtual async Task OnMessageFailedAsync(TMessage message, Exception exception)
+    {
+        // do nothing by default
+        await Task.CompletedTask;
+    }
+
+    protected virtual async Task OnMessageCompletedAsync(TMessage message)
     {
         // do nothing by default
         await Task.CompletedTask;
@@ -35,11 +41,20 @@ public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory lo
                 try
                 {
                     await ExecuteQueuedWorkAsync(msg, stoppingToken);
+
+                    try
+                    {
+                        await OnMessageCompletedAsync(msg);
+                    }
+                    catch (Exception exc)
+                    {
+                        Logger.LogError(exc, "Error in OnMessageCompletedAsync with {@message}", msg);                        
+                    }                    
                 }
                 catch (Exception exc)
                 {
                     Logger.LogError(exc, "Error in queue consumer {type} with {@message}", GetType().Name, msg);
-                    await TrackPoisonMessageAsync(msg, exc);
+                    await OnMessageFailedAsync(msg, exc);
                 }
             }
 
