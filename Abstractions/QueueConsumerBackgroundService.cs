@@ -4,34 +4,46 @@ namespace ManagedBackgroundServices.Abstractions;
 
 public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
 {
-    protected abstract Task<TMessage?> TryDequeueAsync(CancellationToken stoppingToken);
+    protected abstract Task<TMessage[]> TryDequeueAsync(int batchSize, CancellationToken stoppingToken);
 
     protected abstract Task ExecuteQueuedWorkAsync(TMessage message, CancellationToken stoppingToken);
 
-    protected virtual TimeSpan DequeuePause { get => TimeSpan.FromSeconds(5); }
+    protected virtual async Task TrackPoisonMessageAsync(TMessage message, Exception exception)
+    {
+        Logger.LogError(exception, "Error in queue consumer {type} with {@message}", GetType().Name, message);
+        await Task.CompletedTask;
+    }
+
+    protected virtual TimeSpan EmptyQueueDelay => TimeSpan.FromSeconds(5);
+    protected virtual TimeSpan ProcessingDelay => TimeSpan.Zero;
+
+    protected virtual int DequeueBatchSize { get => 3; }
 
     protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var message = await TryDequeueAsync(stoppingToken);
-            if (message is null)
+            var messages = await TryDequeueAsync(DequeueBatchSize, stoppingToken);
+
+            if (!messages.Any())
             {
-                await Task.Delay(DequeuePause, stoppingToken);
+                await Task.Delay(EmptyQueueDelay, stoppingToken);
                 continue;
             }
 
-            try
+            foreach (var msg in messages)
             {
-                await ExecuteQueuedWorkAsync(message, stoppingToken);
+                try
+                {
+                    await ExecuteQueuedWorkAsync(msg, stoppingToken);
+                }
+                catch (Exception exc)
+                {
+                    await TrackPoisonMessageAsync(msg, exc);                    
+                }
             }
-            catch (Exception exc)
-            {
-                // todo: track/dead-letter?
-                Logger.LogError(exc, "Error in queue consumer {type}", GetType().Name);                
-            }
-
-            await Task.Delay(DequeuePause, stoppingToken);
+            
+            await Task.Delay(ProcessingDelay, stoppingToken);
         }
     }
 }
