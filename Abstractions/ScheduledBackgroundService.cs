@@ -32,8 +32,14 @@ public abstract class ScheduledBackgroundService(
         await ExecuteScheduledAsync(stoppingToken);
 
         var nextRunTime = GetNextRunTime(NextRunTime);
-        if (nextRunTime <= NextRunTime)
+
+        if (Logger.IsEnabled(LogLevel.Debug))
         {
+            Logger.LogDebug("Next run time for {type} is {time}", GetType().Name, nextRunTime);
+        }        
+
+        if (nextRunTime <= NextRunTime)
+        {            
             throw new InvalidOperationException($"{GetType().Name} returned a next run time that does not move forward. Current: {NextRunTime:O}, Next: {nextRunTime:O}");
         }
 
