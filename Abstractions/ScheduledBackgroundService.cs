@@ -26,8 +26,7 @@ public abstract class ScheduledBackgroundService(
         if (now < NextRunTime)
         {
             var delay = NextRunTime - now;
-            await Task.Delay(delay, TimeProvider, stoppingToken);
-            return;
+            await Task.Delay(delay, TimeProvider, stoppingToken);            
         }
 
         await ExecuteScheduledAsync(stoppingToken);
