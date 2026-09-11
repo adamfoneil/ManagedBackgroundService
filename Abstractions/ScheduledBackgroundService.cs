@@ -26,7 +26,7 @@ public abstract class ScheduledBackgroundService(
         if (now < NextRunTime)
         {
             var delay = NextRunTime - now;
-            await Task.Delay(delay, TimeProvider, stoppingToken);            
+            await Task.Delay(delay, TimeProvider, stoppingToken);
         }
 
         await ExecuteScheduledAsync(stoppingToken);
@@ -36,10 +36,10 @@ public abstract class ScheduledBackgroundService(
         if (Logger.IsEnabled(LogLevel.Debug))
         {
             Logger.LogDebug("Next run time for {type} is {time}", GetType().Name, nextRunTime);
-        }        
+        }
 
         if (nextRunTime <= NextRunTime)
-        {            
+        {
             throw new InvalidOperationException($"{GetType().Name} returned a next run time that does not move forward. Current: {NextRunTime:O}, Next: {nextRunTime:O}");
         }
 
