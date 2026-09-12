@@ -12,4 +12,10 @@ public static class ServiceExtensions
         services.AddSingleton<T>();
         services.AddHostedService(sp => sp.GetRequiredService<T>());
     }
+
+    public static void AddManagedBackgroundService<T>(this IServiceCollection services, Func<IServiceProvider, T> factory) where T : ManagedBackgroundService
+    {
+        services.AddSingleton(factory);
+        services.AddHostedService(sp => sp.GetRequiredService<T>());
+    }
 }

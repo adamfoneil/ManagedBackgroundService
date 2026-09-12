@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace ScheduleAbstractions;
 
@@ -18,11 +19,15 @@ public sealed class RecurrencePattern : IRecurrencePattern
     /// midnight by default
     /// </summary>
     public TimeOnly[] Times { get; init; } = [new(0, 0)];
+    public TimeSpan? Period { get; init; }
+    public (TimeOnly Start, TimeOnly End)? Between { get; init; }
 
     private static readonly Regex TokenRegex = new(
         @"(?ix)(?:
             tz\s*:\s*(?<tz>[^\s]+)
-            | (?<type>[dwmyt])\s*\[(?<value>[^\]]*)\]
+            | (?<period>\*\s*(?<periodValue>\d+)\s*(?<periodUnit>sec|s|min|m|hr|h|day|d))
+            | (?<between>between)\s*\[(?<betweenValue>[^\]]*)\]
+            | (?<type>[bdwmyt])\s*\[(?<value>[^\]]*)\]
         )");
 
     private static Dictionary<DayOfWeek, string[]> DayAbbreviations => new()
@@ -68,6 +73,8 @@ public sealed class RecurrencePattern : IRecurrencePattern
         int[] monthDays = [];
         int[] yearDays = [];
         TimeOnly[] times = [new(0, 0)];
+        TimeSpan? period = null;
+        (TimeOnly Start, TimeOnly End)? between = null;
 
         var seenWeekDays = false;
         var seenMonthDays = false;
@@ -87,6 +94,23 @@ public sealed class RecurrencePattern : IRecurrencePattern
             if (!string.IsNullOrWhiteSpace(timeZoneName))
             {
                 timeZoneId = timeZoneName;
+                lastIndex = match.Index + match.Length;
+                continue;
+            }
+
+            var periodText = match.Groups["period"].Value;
+            if (!string.IsNullOrWhiteSpace(periodText))
+            {
+                period = ParsePeriodToken(periodText);
+                lastIndex = match.Index + match.Length;
+                continue;
+            }
+
+            var betweenText = match.Groups["between"].Value;
+            var betweenValue = match.Groups["betweenValue"].Value.Trim();
+            if (!string.IsNullOrWhiteSpace(betweenText) || (!string.IsNullOrWhiteSpace(match.Groups["type"].Value) && match.Groups["type"].Value.Equals("b", StringComparison.OrdinalIgnoreCase)))
+            {
+                between = ParseBetweenValue(!string.IsNullOrWhiteSpace(betweenValue) ? betweenValue : match.Groups["value"].Value.Trim());
                 lastIndex = match.Index + match.Length;
                 continue;
             }
@@ -133,6 +157,9 @@ public sealed class RecurrencePattern : IRecurrencePattern
                     times = ParseTimes(selectorValue);
                     seenTime = true;
                     break;
+                case "b":
+                    between = ParseBetweenValue(selectorValue);
+                    break;
                 default:
                     throw new FormatException($"Unknown recurrence selector '{selectorType}'.");
             }
@@ -152,7 +179,9 @@ public sealed class RecurrencePattern : IRecurrencePattern
             WeekDays = weekDays,
             MonthDays = monthDays,
             YearDays = yearDays,
-            Times = times
+            Times = times,
+            Period = period,
+            Between = between
         };
     }
 
@@ -160,6 +189,11 @@ public sealed class RecurrencePattern : IRecurrencePattern
     {
         var timeZone = ResolveTimeZone(TimeZoneId);
         var localAfter = TimeZoneInfo.ConvertTime(after, timeZone);
+
+        if (Period.HasValue)
+        {
+            return GetNextPeriodOccurrence(after, timeZone, localAfter, Period.Value);
+        }
 
         if (WeekDays.Length > 0)
         {
@@ -234,6 +268,54 @@ public sealed class RecurrencePattern : IRecurrencePattern
         return null;
     }
 
+    private DateTimeOffset GetNextPeriodOccurrence(DateTimeOffset after, TimeZoneInfo timeZone, DateTimeOffset localAfter, TimeSpan period)
+    {
+        if (period <= TimeSpan.Zero)
+        {
+            throw new FormatException("Period must be greater than zero.");
+        }
+
+        if (!Between.HasValue)
+        {
+            return after.Add(period);
+        }
+
+        var candidate = localAfter.Add(period);
+        var searchDate = candidate.Date;
+
+        for (var dayOffset = 0; dayOffset < 367; dayOffset++)
+        {
+            var windowDate = searchDate.AddDays(dayOffset);
+            var (windowStart, windowEnd) = GetWindowBounds(windowDate, timeZone, Between.Value);
+
+            if (candidate < windowStart)
+            {
+                return windowStart;
+            }
+
+            if (candidate >= windowStart && candidate <= windowEnd)
+            {
+                return new DateTimeOffset(candidate.DateTime, timeZone.GetUtcOffset(candidate.DateTime));
+            }
+
+            candidate = windowStart;
+        }
+
+        throw new InvalidOperationException("Unable to compute next period occurrence within the supported search window.");
+    }
+
+    private static (DateTimeOffset Start, DateTimeOffset End) GetWindowBounds(DateTime windowDate, TimeZoneInfo timeZone, (TimeOnly Start, TimeOnly End) between)
+    {
+        var startLocal = windowDate.Date.Add(between.Start.ToTimeSpan());
+        var endLocal = between.End >= between.Start
+            ? windowDate.Date.Add(between.End.ToTimeSpan())
+            : windowDate.Date.AddDays(1).Add(between.End.ToTimeSpan());
+
+        return (
+            new DateTimeOffset(startLocal, timeZone.GetUtcOffset(startLocal)),
+            new DateTimeOffset(endLocal, timeZone.GetUtcOffset(endLocal)));
+    }
+
     private static IEnumerable<DateTime> GetMonthlyCandidateDates(DateTimeOffset localAfter, int[] orderedDays)
     {
         return Enumerable.Range(0, 25)
@@ -264,6 +346,55 @@ public sealed class RecurrencePattern : IRecurrencePattern
             .Select(dayOfYear => dayOfYear > 0 ? dayOfYear : totalDays + dayOfYear + 1)
             .Where(actualDay => actualDay >= 1 && actualDay <= totalDays)
             .Select(actualDay => new DateTime(year, 1, 1).AddDays(actualDay - 1));
+    }
+
+    private static TimeSpan ParsePeriodToken(string value)
+    {
+        var token = value.Trim();
+        if (token.StartsWith('*'))
+        {
+            token = token[1..].Trim();
+        }
+
+        var match = Regex.Match(token, @"^(?<value>\d+)\s*(?<unit>sec|s|min|m|hr|h|day|d)$", RegexOptions.IgnoreCase);
+        if (!match.Success)
+        {
+            throw new FormatException($"Invalid period token '{value}'.");
+        }
+
+        var multiplier = int.Parse(match.Groups["value"].Value, CultureInfo.InvariantCulture);
+        var unit = match.Groups["unit"].Value.ToLowerInvariant();
+
+        return unit switch
+        {
+            "sec" or "s" => TimeSpan.FromSeconds(multiplier),
+            "min" or "m" => TimeSpan.FromMinutes(multiplier),
+            "hr" or "h" => TimeSpan.FromHours(multiplier),
+            "day" or "d" => TimeSpan.FromDays(multiplier),
+            _ => throw new FormatException($"Unsupported period unit '{unit}'.")
+        };
+    }
+
+    private static (TimeOnly Start, TimeOnly End)? ParseBetweenValue(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new FormatException("Between selector cannot be empty.");
+        }
+
+        var commaParts = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (commaParts.Length == 2)
+        {
+            return (ParseTimeToken(commaParts[0]), ParseTimeToken(commaParts[1]));
+        }
+
+        var rangeParts = value.Split("..", 2, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (rangeParts.Length == 2)
+        {
+            return (ParseTimeToken(rangeParts[0]), ParseTimeToken(rangeParts[1]));
+        }
+
+        throw new FormatException($"Between selector '{value}' must contain exactly two time values.");
     }
 
     private static DayOfWeek[] ParseWeekDays(string value)

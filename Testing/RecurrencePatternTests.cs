@@ -52,6 +52,75 @@ public sealed class RecurrencePatternTests
     }
 
     [TestMethod]
+    public void PeriodCase()
+    {
+        var pattern = RecurrencePattern.Parse("*5min");
+        Assert.IsTrue(pattern.Period.Equals(TimeSpan.FromMinutes(5)));
+    }
+
+    [TestMethod]
+    public void PeriodCase_GetNextOccurrence_UsesPeriod()
+    {
+        var pattern = RecurrencePattern.Parse("*5min");
+        var after = new DateTimeOffset(2026, 9, 12, 15, 0, 0, TimeSpan.Zero);
+
+        var next = pattern.GetNextOccurrence(after);
+
+        Assert.AreEqual(after.AddMinutes(5), next);
+    }
+
+    [TestMethod]
+    public void PeriodCase_InRange()
+    {
+        var pattern = RecurrencePattern.Parse("*90sec between[9:30am, 2:30pm] tz:America/New_York");
+        Assert.IsTrue(pattern.Period.Equals(TimeSpan.FromSeconds(90)));
+        Assert.AreEqual(new(9, 30), pattern.Between!.Value.Start);
+        Assert.AreEqual(new(14, 30), pattern.Between!.Value.End);
+    }
+
+    [TestMethod]
+    public void PeriodCase_GetNextOccurrence_BeforeWindow_StartsAtWindowOpen()
+    {
+        var pattern = RecurrencePattern.Parse("*90sec between[9:30am, 2:30pm] tz:America/New_York");
+        var after = new DateTimeOffset(2026, 9, 12, 13, 0, 0, TimeSpan.Zero);
+
+        var next = pattern.GetNextOccurrence(after);
+
+        Assert.AreEqual(new DateTimeOffset(2026, 9, 12, 13, 30, 0, TimeSpan.Zero), next);
+    }
+
+    [TestMethod]
+    public void PeriodCase_GetNextOccurrence_AfterWindow_MovesToNextWindow()
+    {
+        var pattern = RecurrencePattern.Parse("*90sec between[9:30am, 2:30pm] tz:America/New_York");
+        var after = new DateTimeOffset(2026, 9, 12, 19, 0, 0, TimeSpan.Zero);
+
+        var next = pattern.GetNextOccurrence(after);
+
+        Assert.AreEqual(new DateTimeOffset(2026, 9, 13, 13, 30, 0, TimeSpan.Zero), next);
+    }
+
+    [TestMethod]
+    public void PeriodCase_InRange2()
+    {
+        var pattern = RecurrencePattern.Parse("*1hr b[2:30pm, 9:30am] tz:America/New_York");
+        Assert.IsTrue(pattern.Period.Equals(TimeSpan.FromHours(1)));
+        Assert.AreEqual(new(14, 30), pattern.Between!.Value.Start);
+        Assert.AreEqual(new(9, 30), pattern.Between!.Value.End);
+    }
+
+    [TestMethod]
+    public void PeriodCase_GetNextOccurrence_OvernightWindow_StaysWithinWindow()
+    {
+        var pattern = RecurrencePattern.Parse("*1hr b[2:30pm, 9:30am] tz:America/New_York");
+        var after = new DateTimeOffset(2026, 9, 12, 23, 0, 0, TimeSpan.Zero);
+
+        var next = pattern.GetNextOccurrence(after);
+
+        Assert.AreEqual(new DateTimeOffset(2026, 9, 13, 0, 0, 0, TimeSpan.Zero), next);
+    }
+
+    [TestMethod]
     public void InvalidCase()
     {
         try
