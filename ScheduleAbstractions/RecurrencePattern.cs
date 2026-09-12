@@ -178,16 +178,7 @@ public sealed class RecurrencePattern : IRecurrencePattern
         if (MonthDays.Length > 0)
         {
             var orderedDays = MonthDays.Distinct().OrderBy(day => day).ToArray();
-            var candidateDates = Enumerable.Range(0, 25)
-                .Select(monthOffset => localAfter.Date.AddMonths(monthOffset))
-                .SelectMany(candidateMonth =>
-                {
-                    var totalDays = DateTime.DaysInMonth(candidateMonth.Year, candidateMonth.Month);
-                    return orderedDays
-                        .Select(day => day > 0 ? day : totalDays + day + 1)
-                        .Where(actualDay => actualDay >= 1 && actualDay <= totalDays)
-                        .Select(actualDay => new DateTime(candidateMonth.Year, candidateMonth.Month, actualDay));
-                });
+            var candidateDates = GetMonthlyCandidateDates(localAfter, orderedDays);
 
             var nextOccurrence = TryGetNextOccurrence(after, timeZone, localAfter, candidateDates);
             if (nextOccurrence.HasValue)
@@ -199,16 +190,7 @@ public sealed class RecurrencePattern : IRecurrencePattern
         if (YearDays.Length > 0)
         {
             var orderedDays = YearDays.Distinct().OrderBy(day => day).ToArray();
-            var candidateDates = Enumerable.Range(0, 6)
-                .Select(yearOffset => localAfter.Year + yearOffset)
-                .SelectMany(year =>
-                {
-                    var totalDays = DateTime.IsLeapYear(year) ? 366 : 365;
-                    return orderedDays
-                        .Select(dayOfYear => dayOfYear > 0 ? dayOfYear : totalDays + dayOfYear + 1)
-                        .Where(actualDay => actualDay >= 1 && actualDay <= totalDays)
-                        .Select(actualDay => new DateTime(year, 1, 1).AddDays(actualDay - 1));
-                });
+            var candidateDates = GetYearlyCandidateDates(localAfter, orderedDays);
 
             var nextOccurrence = TryGetNextOccurrence(after, timeZone, localAfter, candidateDates);
             if (nextOccurrence.HasValue)
@@ -250,6 +232,38 @@ public sealed class RecurrencePattern : IRecurrencePattern
         }
 
         return null;
+    }
+
+    private static IEnumerable<DateTime> GetMonthlyCandidateDates(DateTimeOffset localAfter, int[] orderedDays)
+    {
+        return Enumerable.Range(0, 25)
+            .Select(monthOffset => localAfter.Date.AddMonths(monthOffset))
+            .SelectMany(candidateMonth => GetValidDatesForMonth(candidateMonth, orderedDays));
+    }
+
+    private static IEnumerable<DateTime> GetYearlyCandidateDates(DateTimeOffset localAfter, int[] orderedDays)
+    {
+        return Enumerable.Range(0, 6)
+            .Select(yearOffset => localAfter.Year + yearOffset)
+            .SelectMany(year => GetValidDatesForYear(year, orderedDays));
+    }
+
+    private static IEnumerable<DateTime> GetValidDatesForMonth(DateTime monthDate, int[] orderedDays)
+    {
+        var totalDays = DateTime.DaysInMonth(monthDate.Year, monthDate.Month);
+        return orderedDays
+            .Select(day => day > 0 ? day : totalDays + day + 1)
+            .Where(actualDay => actualDay >= 1 && actualDay <= totalDays)
+            .Select(actualDay => new DateTime(monthDate.Year, monthDate.Month, actualDay));
+    }
+
+    private static IEnumerable<DateTime> GetValidDatesForYear(int year, int[] orderedDays)
+    {
+        var totalDays = DateTime.IsLeapYear(year) ? 366 : 365;
+        return orderedDays
+            .Select(dayOfYear => dayOfYear > 0 ? dayOfYear : totalDays + dayOfYear + 1)
+            .Where(actualDay => actualDay >= 1 && actualDay <= totalDays)
+            .Select(actualDay => new DateTime(year, 1, 1).AddDays(actualDay - 1));
     }
 
     private static DayOfWeek[] ParseWeekDays(string value)
