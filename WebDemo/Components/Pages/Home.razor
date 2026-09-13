@@ -3,4 +3,19 @@
 
 <PageTitle>Home</PageTitle>
 
-<Dashboard />
+<button @onclick="() => OnClick()">Sample</button>
+
+<p>@_value</p>
+
+<Dashboard @rendermode="InteractiveServer" />
+
+<Sample @rendermode="InteractiveServer" />
+
+@code {
+    private int _value = 0;
+
+    void OnClick()
+    {
+        _value++;
+    }
+}

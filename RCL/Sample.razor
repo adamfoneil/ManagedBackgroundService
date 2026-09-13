@@ -1,0 +1,11 @@
+<button @onclick="OnClick">Sample</button>
+<p>@_value</p>
+
+@code {
+    private int _value;
+
+    private void OnClick()
+    {
+        _value++;
+    }
+}

@@ -1,4 +1,5 @@
 using ManagedBackgroundServices.Abstractions;
+using RCL;
 using WebDemo.BackgroundJobs;
 using WebDemo.Components;
 
@@ -6,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents();    
 
 builder.Services.AddManagedBackgroundService<SampleRecurringJob>();
 
@@ -26,6 +27,7 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .AddAdditionalAssemblies(typeof(Dashboard).Assembly);
 
 app.Run();
