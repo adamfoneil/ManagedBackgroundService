@@ -22,6 +22,8 @@ internal class Program
             })
             .ConfigureServices(services =>
             {
+                services.AddHealthChecks().AddCheck<BackgroundServicesHealthCheck>("Background Services");
+
                 services.AddManagedBackgroundService(sp => new SampleScheduledJob(
                     sp.GetRequiredService<ILoggerFactory>(),
                     RecurrencePattern.Parse("*4sec"), TimeProvider.System));
