@@ -2,9 +2,9 @@
 
 namespace ManagedBackgroundServices.Abstractions;
 
-public class BackgroundServicesHealthCheck(IManagedBackgroundServiceAccessor backgroundServices) : IHealthCheck
+public class BackgroundServicesHealthCheck(IManagedBackgroundServiceProvider backgroundServices) : IHealthCheck
 {
-    private readonly IManagedBackgroundServiceAccessor _backgroundServices = backgroundServices;
+    private readonly IManagedBackgroundServiceProvider _backgroundServices = backgroundServices;
 
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {

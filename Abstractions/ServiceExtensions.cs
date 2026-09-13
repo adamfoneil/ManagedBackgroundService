@@ -26,6 +26,6 @@ public static class ServiceExtensions
 
     private static void AddManagedBackgroundServiceInfrastructure(IServiceCollection services)
     {
-        services.TryAddSingleton<IManagedBackgroundServiceAccessor, ManagedBackgroundServiceAccessor>();
+        services.TryAddSingleton<IManagedBackgroundServiceProvider, ManagedBackgroundServiceProvider>();
     }
 }

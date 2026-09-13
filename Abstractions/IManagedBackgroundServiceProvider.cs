@@ -1,6 +1,6 @@
 namespace ManagedBackgroundServices.Abstractions;
 
-public interface IManagedBackgroundServiceAccessor
+public interface IManagedBackgroundServiceProvider
 {
     IReadOnlyCollection<ManagedBackgroundService> Services { get; }
 }
