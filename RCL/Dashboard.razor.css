@@ -1,0 +1,51 @@
+.mbs-dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: sans-serif;
+}
+
+    .mbs-dashboard-table th,
+    .mbs-dashboard-table td {
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid #ddd;
+        text-align: left;
+        vertical-align: middle;
+    }
+
+.mbs-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+}
+
+.mbs-status-icon {
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.mbs-status-running {
+    color: #0a7a20;
+}
+
+.mbs-status-paused {
+    color: #9c6a00;
+}
+
+.mbs-status-crashed {
+    color: #b00020;
+}
+
+.mbs-btn {
+    margin-right: 0.4rem;
+    padding: 0.25rem 0.55rem;
+    border: 1px solid #999;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+}
+
+    .mbs-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }

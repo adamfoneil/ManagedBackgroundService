@@ -1,5 +1,7 @@
 <Solution>
   <Project Path="Abstractions/Abstractions.csproj" />
   <Project Path="ConsoleDemo/ConsoleDemo.csproj" />
+  <Project Path="RCL/RCL.csproj" Id="09d092dc-3366-467e-98c9-04ad51b9d48e" />
   <Project Path="Testing/Testing.csproj" Id="7648fa38-c42e-4923-b6c5-e95152a0c553" />
+  <Project Path="WebDemo/WebDemo.csproj" Id="938c7837-e20e-4405-b4dd-a431ddb650a3" />
 </Solution>

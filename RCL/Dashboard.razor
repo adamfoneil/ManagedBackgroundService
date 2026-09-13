@@ -1,0 +1,61 @@
+@using ManagedBackgroundServices.Abstractions
+@rendermode InteractiveServer
+@inject IManagedBackgroundServiceProvider BackgroundServices
+
+<table class="mbs-dashboard-table">
+    <thead>
+        <tr>
+            <th>Service</th>
+            <th>Status</th>
+            <th>Updated (UTC)</th>
+            <th>Controls</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var svc in BackgroundServices.Services)
+        {
+            <tr>
+                <td>@svc.GetType().Name</td>
+                <td>
+                    <span class="mbs-status-chip @GetStatusCssClass(svc.Status)">
+                        <span class="mbs-status-icon" aria-hidden="true">@GetStatusIcon(svc.Status)</span>
+                        @svc.Status
+                    </span>
+                </td>
+                <td>@svc.StatusDateTimeUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td>
+                    <button class="mbs-btn" @onclick="() => PauseService(svc)" disabled="@(svc.Status != Status.Running)">Pause</button>
+                    <button class="mbs-btn" @onclick="() => ResumeService(svc)" disabled="@(svc.Status != Status.Paused)">Resume</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private static string GetStatusIcon(Status status) => status switch
+    {
+        Status.Running => "✔",
+        Status.Paused => "⏸",
+        Status.Crashed => "✖",
+        _ => "?"
+    };
+
+    private static string GetStatusCssClass(Status status) => status switch
+    {
+        Status.Running => "mbs-status-running",
+        Status.Paused => "mbs-status-paused",
+        Status.Crashed => "mbs-status-crashed",
+        _ => string.Empty
+    };
+
+    private static void PauseService(ManagedBackgroundService service)
+    {
+        service.Pause();
+    }
+
+    private static void ResumeService(ManagedBackgroundService service)
+    {
+        service.Resume();
+    }
+}
