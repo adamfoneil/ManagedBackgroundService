@@ -1,21 +1,14 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
+﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ManagedBackgroundServices.Abstractions;
 
-public class BackgroundServicesHealthCheck(IServiceProvider serviceProvider) : IHealthCheck
+public class BackgroundServicesHealthCheck(IManagedBackgroundServiceAccessor backgroundServices) : IHealthCheck
 {
-    private readonly IServiceProvider _serviceProvider = serviceProvider;
+    private readonly IManagedBackgroundServiceAccessor _backgroundServices = backgroundServices;
 
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        using var scope = _serviceProvider.CreateScope();
-
-        var services = scope.ServiceProvider
-            .GetServices<ManagedBackgroundService>()
-            .ToArray();
-
-        var unhealthy = services
+        var unhealthy = _backgroundServices.Services
             .Where(s => s.Status != Status.Running)
             .Select(s => new { s.GetType().Name, Status = s.Status.ToString() })
             .ToArray();
