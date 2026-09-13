@@ -1,5 +1,5 @@
 <Solution>
   <Project Path="Abstractions/Abstractions.csproj" />
-  <Project Path="Samples/Samples.csproj" Id="fe0e8b93-57d3-45c6-96ac-9d38a17dd080" />
+  <Project Path="ConsoleDemo/ConsoleDemo.csproj" />
   <Project Path="Testing/Testing.csproj" Id="7648fa38-c42e-4923-b6c5-e95152a0c553" />
 </Solution>
