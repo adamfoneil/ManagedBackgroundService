@@ -1,9 +1,9 @@
 ﻿using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace ScheduleAbstractions;
+namespace ManagedBackgroundServices.Abstractions;
 
-public sealed class RecurrencePattern : IRecurrencePattern
+public sealed class RecurrencePattern
 {
     public string TimeZoneId { get; init; } = "UTC";
     public DayOfWeek[] WeekDays { get; init; } = [];

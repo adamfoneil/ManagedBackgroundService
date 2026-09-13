@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
-    <ProjectReference Include="..\ScheduleAbstractions\ScheduleAbstractions.csproj" />
   </ItemGroup>
 
 	<ItemGroup>

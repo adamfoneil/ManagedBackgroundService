@@ -1,11 +1,11 @@
-﻿using ScheduleAbstractions;
+﻿using ManagedBackgroundServices.Abstractions;
 
 namespace Testing;
 
 [TestClass]
 public sealed class RecurrencePatternTests
 {
-    [TestMethod]    
+    [TestMethod]
     public void DailyCase_Select()
     {
         var pattern = RecurrencePattern.Parse("d[tue, fri] t[9:30, 18:30] tz:America/New_York");

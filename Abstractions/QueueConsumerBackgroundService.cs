@@ -48,8 +48,8 @@ public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory lo
                     }
                     catch (Exception exc)
                     {
-                        Logger.LogError(exc, "Error in OnMessageCompletedAsync with {@message}", msg);                        
-                    }                    
+                        Logger.LogError(exc, "Error in OnMessageCompletedAsync with {@message}", msg);
+                    }
                 }
                 catch (Exception exc)
                 {
