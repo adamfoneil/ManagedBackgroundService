@@ -1,9 +1,6 @@
 @using ManagedBackgroundServices.Abstractions
 @inject IManagedBackgroundServiceProvider BackgroundServices
 
-<button @onclick="OnClick">Sample</button>
-<p>@_value</p>
-
 <table class="mbs-dashboard-table">
     <thead>
         <tr>
@@ -34,14 +31,7 @@
     </tbody>
 </table>
 
-@code {
-    private int _value;
-
-    private void OnClick()
-    {
-        _value++;
-    }
-
+@code {    
     private string GetStatusIcon(Status status) => status switch
     {
         Status.Running => "✔",
