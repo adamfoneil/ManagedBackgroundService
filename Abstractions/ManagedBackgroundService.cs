@@ -54,7 +54,12 @@ public abstract class ManagedBackgroundService : BackgroundService
 
         Status = Status.Running;
         StatusDateTimeUtc = DateTime.UtcNow;
-        Logger.LogInformation("Resumed background service {type}", GetType().Name);
+        Exception = null;
+
+        if (Logger.IsEnabled(LogLevel.Information))
+        {
+            Logger.LogInformation("Resumed background service {type}", GetType().Name);
+        }        
     }
 
     public void Pause()
@@ -63,7 +68,11 @@ public abstract class ManagedBackgroundService : BackgroundService
 
         Status = Status.Paused;
         StatusDateTimeUtc = DateTime.UtcNow;
-        Logger.LogInformation("Paused background service {type}", GetType().Name);
+
+        if (Logger.IsEnabled(LogLevel.Information))
+        {
+            Logger.LogInformation("Paused background service {type}", GetType().Name);
+        }        
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -72,7 +81,10 @@ public abstract class ManagedBackgroundService : BackgroundService
         {
             Status = Status.Running;
             StatusDateTimeUtc = DateTime.UtcNow;
-            Logger.LogInformation("Started background service {type} started at {now} UTC", GetType().Name, StatusDateTimeUtc);
+            if (Logger.IsEnabled(LogLevel.Information))
+            {
+                Logger.LogInformation("Started background service {type} started at {now} UTC", GetType().Name, StatusDateTimeUtc);
+            }            
 
             while (!stoppingToken.IsCancellationRequested)
             {
