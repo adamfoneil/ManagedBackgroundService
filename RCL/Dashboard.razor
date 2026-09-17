@@ -8,6 +8,7 @@
             <th>Status</th>
             <th>Updated (UTC)</th>
             <th>Controls</th>
+            <th>Exception</th>
         </tr>
     </thead>
     <tbody>
@@ -25,6 +26,16 @@
                 <td>
                     <button class="mbs-btn" @onclick="() => PauseService(svc)" disabled="@(svc.Status != Status.Running)">Pause</button>
                     <button class="mbs-btn" @onclick="() => ResumeService(svc)" disabled="@(svc.Status != Status.Paused)">Resume</button>
+                </td>
+                <td>
+                    @if (svc.Exception is not null)
+                    {                        
+                        <code>
+                            <pre>
+                                @svc.Exception.StackTrace
+                            </pre>                            
+                        </code>                        
+                    }
                 </td>
             </tr>
         }
