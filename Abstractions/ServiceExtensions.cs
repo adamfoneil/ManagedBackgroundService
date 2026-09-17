@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace ManagedBackgroundServices.Abstractions;
 
@@ -22,6 +23,13 @@ public static class ServiceExtensions
         services.AddSingleton(factory);
         services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<T>());
         services.AddHostedService(sp => sp.GetRequiredService<T>());
+    }
+
+    public static void AddInMemoryLogger(this IServiceCollection services, int maxCapacity = 1000)
+    {
+        var provider = new InMemoryLoggerProvider(maxCapacity);
+        services.AddLogging(builder => builder.AddProvider(provider));
+        services.AddSingleton(provider); // Expose for querying
     }
 
     private static void AddManagedBackgroundServiceInfrastructure(IServiceCollection services)
