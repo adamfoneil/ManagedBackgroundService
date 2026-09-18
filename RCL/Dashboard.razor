@@ -1,9 +1,11 @@
 @using ManagedBackgroundServices.Abstractions
 @inject IManagedBackgroundServiceProvider BackgroundServices
+@inject IInMemoryLogQuery LogQuery
 
 <table class="mbs-dashboard-table">
     <thead>
         <tr>
+            <th></th>
             <th>Service</th>
             <th>Status</th>
             <th>Updated (UTC)</th>
@@ -14,8 +16,15 @@
     <tbody>
         @foreach (var svc in BackgroundServices.Services)
         {
+            var serviceType = svc.GetType().Name;
+            var serviceCategory = svc.GetType().FullName!;
+            var isExpanded = _expandedServiceNames.Contains(serviceType);
+
             <tr>
-                <td>@svc.GetType().Name</td>
+                <td>
+                    <button class="mbs-btn mbs-expand-btn" @onclick="() => ToggleLogs(serviceType)">@(isExpanded ? "Hide" : "Show") logs</button>
+                </td>
+                <td>@serviceType</td>
                 <td>
                     <span class="mbs-status-chip @GetStatusCssClass(svc.Status)">
                         <span class="mbs-status-icon" aria-hidden="true">@GetStatusIcon(svc.Status)</span>
@@ -29,20 +38,61 @@
                 </td>
                 <td>
                     @if (svc.Exception is not null)
-                    {                        
+                    {
                         <code>
                             <pre>
                                 @svc.Exception.StackTrace
-                            </pre>                            
-                        </code>                        
+                            </pre>
+                        </code>
                     }
                 </td>
             </tr>
+
+            @if (isExpanded)
+            {
+                var logs = GetServiceLogs(serviceCategory);
+
+                <tr class="mbs-log-row">
+                    <td></td>
+                    <td colspan="5">
+                        <table class="mbs-logs-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp (UTC)</th>
+                                    <th>Level</th>
+                                    <th>Message</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (logs.Count == 0)
+                                {
+                                    <tr>
+                                        <td colspan="3">No recent logs found.</td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var entry in logs)
+                                    {
+                                        <tr>
+                                            <td>@entry.TimestampUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                            <td>@entry.Level</td>
+                                            <td>@entry.Message</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+            }
         }
     </tbody>
 </table>
 
-@code {    
+@code {
+    private readonly HashSet<string> _expandedServiceNames = [];
+
     private string GetStatusIcon(Status status) => status switch
     {
         Status.Running => "✔",
@@ -58,6 +108,17 @@
         Status.Crashed => "mbs-status-crashed",
         _ => string.Empty
     };
+
+    private void ToggleLogs(string serviceType)
+    {
+        if (!_expandedServiceNames.Add(serviceType))
+        {
+            _expandedServiceNames.Remove(serviceType);
+        }
+    }
+
+    private IReadOnlyList<LogEntry> GetServiceLogs(string serviceType) =>
+        LogQuery.GetLogs(category: serviceType, maxResults: 10);
 
     private void PauseService(ManagedBackgroundService service)
     {

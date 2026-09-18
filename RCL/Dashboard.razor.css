@@ -49,3 +49,24 @@
         opacity: 0.45;
         cursor: not-allowed;
     }
+
+.mbs-expand-btn {
+    margin-right: 0;
+    min-width: 5.5rem;
+}
+
+.mbs-log-row td {
+    background: #fafafa;
+}
+
+.mbs-logs-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .mbs-logs-table th,
+    .mbs-logs-table td {
+        padding: 0.35rem 0.5rem;
+        border-bottom: 1px solid #eee;
+        vertical-align: top;
+    }

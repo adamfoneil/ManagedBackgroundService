@@ -22,6 +22,8 @@ public class LogEntry
 /// </summary>
 public sealed class InMemoryLoggerProvider : ILoggerProvider, IInMemoryLogQuery
 {
+    private static readonly string[] ExcludedCategoryPrefixes = ["Microsoft.", "System."];
+
     private readonly int _maxCapacity;
     private readonly ConcurrentQueue<LogEntry> _buffer = new();
     private readonly Lock _lockObj = new();
@@ -46,12 +48,20 @@ public sealed class InMemoryLoggerProvider : ILoggerProvider, IInMemoryLogQuery
     /// </summary>
     internal void LogMessage(LogEntry entry)
     {
+        if (IsExcludedCategory(entry.Category))
+        {
+            return;
+        }
+
         lock (_lockObj)
         {
             _buffer.Enqueue(entry);
             while (_buffer.Count > _maxCapacity && _buffer.TryDequeue(out _)) { }
         }
-    }    
+    }
+
+    private static bool IsExcludedCategory(string category) =>
+        ExcludedCategoryPrefixes.Any(prefix => category.StartsWith(prefix, StringComparison.Ordinal));
 
     /// <summary>
     /// Clears all log entries
@@ -64,7 +74,7 @@ public sealed class InMemoryLoggerProvider : ILoggerProvider, IInMemoryLogQuery
         }
     }
 
-    public IReadOnlyList<LogEntry> GetLogs(int maxResults = 0, int minutesBack = 0, Func<LogEntry, bool>? criteria = null)
+    public IReadOnlyList<LogEntry> GetLogs(string? category = null, int maxResults = 0, int minutesBack = 0, Func<LogEntry, bool>? criteria = null)
     {
         // Capture a snapshot of entries to avoid holding locks while filtering
         var snapshot = _buffer.ToArray();
@@ -72,6 +82,11 @@ public sealed class InMemoryLoggerProvider : ILoggerProvider, IInMemoryLogQuery
         DateTime? cutoff = minutesBack > 0 ? DateTime.UtcNow.AddMinutes(-minutesBack) : null;
 
         var query = snapshot.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            query = query.Where(e => e.Category.Equals(category, StringComparison.OrdinalIgnoreCase));
+        }
 
         if (cutoff.HasValue)
         {
