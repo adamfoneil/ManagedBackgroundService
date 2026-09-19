@@ -10,14 +10,15 @@ public abstract class PersistentQueue
 
     public record QueueMessage(
         DateTime Timestamp,
-        string TypeName,
+        string TypeName, // full type name needed for json deserialization
+        string HandlerName, // needed for handler routing (short type name)
         string MachineName,
         string JsonData);
 
     public async Task EnqueueAsync<T>(T payload)
     {
         var payloadJson = JsonSerializer.Serialize(payload);
-        await StoreMessageAsync(new(DateTime.UtcNow, typeof(T).Name, Environment.MachineName, payloadJson));
+        await StoreMessageAsync(new(DateTime.UtcNow, $"{typeof(T).FullName!}, {typeof(T).Assembly.GetName()}", typeof(T).Name, Environment.MachineName, payloadJson));
     }
 
     public abstract Task<QueueMessage[]> DequeueAsync(int batchSize, CancellationToken stoppingToken);

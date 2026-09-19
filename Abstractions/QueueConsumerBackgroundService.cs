@@ -58,7 +58,7 @@ public abstract class QueueConsumerBackgroundService(
     }
 
     protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
-    {        
+    {
         while (!stoppingToken.IsCancellationRequested)
         {
             var messages = await _persistentQueue.DequeueAsync(DequeueBatchSize, stoppingToken);
@@ -75,7 +75,7 @@ public abstract class QueueConsumerBackgroundService(
 
                 try
                 {
-                    if (!MessageHandlers.TryGetValue(queueMessage.TypeName, out var handler))
+                    if (!MessageHandlers.TryGetValue(queueMessage.HandlerName, out var handler))
                     {
                         Logger.LogWarning("No handler registered for message type {TypeName}", queueMessage.TypeName);
                         continue;

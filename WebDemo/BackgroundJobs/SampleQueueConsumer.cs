@@ -1,4 +1,5 @@
-﻿using ManagedBackgroundServices.Abstractions;
+﻿using System.Text.Json;
+using ManagedBackgroundServices.Abstractions;
 using ManagedBackgroundServices.Abstractions.Infrastructure;
 
 namespace WebDemo.BackgroundJobs;
@@ -14,7 +15,29 @@ public class SampleQueueConsumer(ILoggerFactory loggerFactory, PersistentQueue p
         new Dictionary<string, QueueMessageHandler>
         {
             [nameof(SampleMessage)] = HandleSampleMessage
-        };    
+        };
+
+    protected override object? DeserializeMessage(string typeName, string jsonData)
+    {
+        var messageType = Type.GetType(typeName) 
+            ?? Type.GetType($"{typeName}, WebDemo");
+
+        if (messageType == null)
+        {
+            Logger.LogWarning("Could not resolve type {TypeName}", typeName);
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize(jsonData, messageType);
+        }
+        catch (Exception exc)
+        {
+            Logger.LogError(exc, "Failed to deserialize message of type {TypeName}", typeName);
+            throw;
+        }
+    }
 
     async Task HandleSampleMessage(object message, CancellationToken cancellationToken)
     {

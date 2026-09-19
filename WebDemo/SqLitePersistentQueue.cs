@@ -24,6 +24,7 @@ public class SqLitePersistentQueue : PersistentQueue
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp TEXT NOT NULL,
                 type_name TEXT NOT NULL,
+                handler_name TEXT NOT NULL,
                 machine_name TEXT NOT NULL,
                 json_data TEXT NOT NULL,
                 created_at TEXT NOT NULL,
@@ -36,12 +37,13 @@ public class SqLitePersistentQueue : PersistentQueue
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
         await connection.ExecuteAsync($@"
-                INSERT INTO {_tableName} (timestamp, type_name, machine_name, json_data, created_at)
-                VALUES (@Timestamp, @TypeName, @MachineName, @JsonData, @CreatedAt)",
+                INSERT INTO {_tableName} (timestamp, type_name, handler_name, machine_name, json_data, created_at)
+                VALUES (@Timestamp, @TypeName, @HandlerName, @MachineName, @JsonData, @CreatedAt)",
             new
             {
                 message.Timestamp,
                 message.TypeName,
+                message.HandlerName,
                 message.MachineName,
                 message.JsonData,
                 CreatedAt = DateTime.UtcNow
@@ -58,8 +60,8 @@ public class SqLitePersistentQueue : PersistentQueue
 
         try
         {
-            var messages = await connection.QueryAsync<(long id, string timestamp, string type_name, string machine_name, string json_data)>($@"
-                        SELECT id, timestamp, type_name, machine_name, json_data 
+            var messages = await connection.QueryAsync<(long id, string timestamp, string type_name, string handler_name, string machine_name, string json_data)>($@"
+                        SELECT id, timestamp, type_name, handler_name, machine_name, json_data 
                         FROM {_tableName}
                         WHERE processed = 0
                         ORDER BY id ASC
@@ -82,6 +84,7 @@ public class SqLitePersistentQueue : PersistentQueue
             return [.. messages.Select(m => new QueueMessage(
                 DateTime.Parse(m.timestamp),
                 m.type_name,
+                m.handler_name,
                 m.machine_name,
                 m.json_data
             ))];
