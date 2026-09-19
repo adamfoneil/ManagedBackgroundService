@@ -5,7 +5,7 @@ namespace ManagedBackgroundServices.Abstractions;
 public interface IQueueConsumerPerformance
 {
     decimal ConsumeRate { get; }
-    TimeSpan ConsumeRateReferenceSpan { get; }
+    TimeSpan ConsumeRateSpan { get; }
 }
 
 public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory), IQueueConsumerPerformance
@@ -29,7 +29,7 @@ public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory lo
     protected virtual TimeSpan EmptyQueueDelay => TimeSpan.FromSeconds(5);
     protected virtual TimeSpan ProcessingDelay => TimeSpan.Zero;
     protected virtual int DequeueBatchSize { get => 3; }
-    public virtual TimeSpan ConsumeRateReferenceSpan { get => TimeSpan.FromMinutes(5); }
+    public virtual TimeSpan ConsumeRateSpan { get => TimeSpan.FromMinutes(5); }
 
     private int _consumed = 0;
     private DateTime _windowStart = DateTime.UtcNow;
@@ -40,7 +40,7 @@ public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory lo
         {
             var elapsed = DateTime.UtcNow - _windowStart;
 
-            if (elapsed >= ConsumeRateReferenceSpan)
+            if (elapsed >= ConsumeRateSpan)
             {
                 _consumed = 0;
                 _windowStart = DateTime.UtcNow;

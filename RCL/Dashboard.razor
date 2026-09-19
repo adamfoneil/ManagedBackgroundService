@@ -42,7 +42,7 @@
 
                     @if (svc is IQueueConsumerPerformance queueSvc)
                     {
-                        <span class="ms-3">@queueSvc.ConsumeRate.ToString("n1") / @TimeSpanExpression(queueSvc.ConsumeRateReferenceSpan)</span>
+                        <span class="ms-3">@queueSvc.ConsumeRate.ToString("n1") / @TimeSpanExpression(queueSvc.ConsumeRateSpan)</span>
                     }
 
                     @if (_errorsByCategory is not null)
