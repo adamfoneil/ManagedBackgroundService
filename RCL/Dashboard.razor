@@ -7,17 +7,13 @@
 
 @if (_logsByCategory is null) return;
 
-@{
-    var now = DateTime.UtcNow;
-}
-
 <table class="mbs-dashboard-table">
     <thead>
         <tr>
             <th></th>
             <th>Service</th>
             <th>Status</th>
-            <th>Updated (UTC)</th>
+            <th>@TimeColumnHeading</th>
             <th>Controls</th>
             <th>Exception</th>
         </tr>
@@ -55,7 +51,7 @@
                         </span>
                     }
                 </td>
-                <td>@svc.StatusDateTimeUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td>@ConvertToLocalTime(svc.StatusDateTimeUtc).ToString("yyyy-MM-dd HH:mm:ss") | @AgeExpression(svc.StatusDateTimeUtc)</td>
                 <td>
                     <button class="mbs-btn" @onclick="() => PauseService(svc)" disabled="@(svc.Status != Status.Running)">Pause</button>
                     <button class="mbs-btn" @onclick="() => ResumeService(svc)" disabled="@(svc.Status != Status.Paused)">Resume</button>
@@ -99,7 +95,7 @@
                                     @foreach (var entry in logs)
                                     {
                                         <tr>
-                                            <td>@entry.TimestampUtc.ToString("yyyy-MM-dd HH:mm:ss") - @AgeExpression(entry.GetAge(now))</td>
+                                            <td>@ConvertToLocalTime(entry.TimestampUtc).ToString("yyyy-MM-dd HH:mm:ss") - @AgeExpression(entry.GetAge(DateTime.UtcNow))</td>
                                             <td>@entry.Level</td>
                                             <td>@entry.Message</td>
                                         </tr>
@@ -118,9 +114,45 @@
     private readonly HashSet<string> _expandedServiceNames = [];
     private ILookup<string, LogEntry>? _logsByCategory;
     private ILookup<string, (LogLevel Level, int Count)>? _errorsByCategory;
+    private bool _isLocalTime = false;
+    private string TimeColumnHeading => _isLocalTime ? "Updated (Local)" : "Updated (UTC)";
 
     [Parameter] public int MaxLogsPerCategory { get; set; } = 10;
     [Parameter] public int ErrorsLookMinutesBack { get; set; } = 30;
+    [Parameter] public string? TimeZoneId { get; set; }
+
+    private TimeZoneInfo? _timeZone;
+
+    protected override void OnInitialized()
+    {
+        // Initialize timezone
+        if (!string.IsNullOrWhiteSpace(TimeZoneId))
+        {
+            try
+            {
+                _timeZone = TimeZoneInfo.FindSystemTimeZoneById(TimeZoneId);
+                _isLocalTime = true;
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // If timezone is invalid, fall back to UTC
+                _timeZone = null;
+            }
+        }
+
+        _logsByCategory = LogQuery.GetLogsByCategory(maxPerCategory: MaxLogsPerCategory);
+        _errorsByCategory = LogQuery.GetErrorsByCategory(minutesBack: ErrorsLookMinutesBack);
+    }
+
+    private DateTime ConvertToLocalTime(DateTime utcDateTime)
+    {
+        if (_timeZone is null)
+        {
+            return utcDateTime;
+        }
+
+        return TimeZoneInfo.ConvertTime(utcDateTime, _timeZone);
+    }
 
     private string GetStatusIcon(Status status) => status switch
     {
@@ -156,11 +188,7 @@
         service.Resume();
     }
 
-    protected override void OnInitialized()
-    {
-        _logsByCategory = LogQuery.GetLogsByCategory(maxPerCategory: MaxLogsPerCategory);
-        _errorsByCategory = LogQuery.GetErrorsByCategory(minutesBack: ErrorsLookMinutesBack);
-    }
+    private static string AgeExpression(DateTime dateTime) => TimeSpanExpression(DateTime.UtcNow - dateTime) + " ago";
 
     private static string AgeExpression(TimeSpan age) => TimeSpanExpression(age) + " ago";
     
