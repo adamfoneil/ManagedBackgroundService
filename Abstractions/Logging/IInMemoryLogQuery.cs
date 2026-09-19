@@ -21,7 +21,9 @@ public interface IInMemoryLogQuery
             .ToLookup(e => e.Category);
     }
 
-    Dictionary<(string, LogLevel), int> GetCategorySnapshot(int minutesBack = 0, Func<LogEntry, bool>? criteria = null) => GetLogs(minutesBack: minutesBack, criteria: criteria).CountBy(e => (e.Category, e.Level)).ToDictionary();
+    Dictionary<(string Category, LogLevel Level), int> GetCategorySnapshot(int minutesBack = 0, Func<LogEntry, bool>? criteria = null) => GetLogs(minutesBack: minutesBack, criteria: criteria).CountBy(e => (e.Category, e.Level)).ToDictionary();
 
-    Dictionary<(string, LogLevel), int> GetErrorSnapshot(int minutesBack = 0) => GetCategorySnapshot(minutesBack: minutesBack, criteria: (e) => e.Level >= LogLevel.Error);
+    Dictionary<(string Category, LogLevel Level), int> GetErrorSnapshot(int minutesBack = 0) => GetCategorySnapshot(minutesBack: minutesBack, criteria: (e) => e.Level >= LogLevel.Error);
+
+    ILookup<string, (LogLevel Level, int Count)> GetErrorsByCategory(int minutesBack = 0) => GetErrorSnapshot(minutesBack: minutesBack).ToLookup(grp => grp.Key.Category, grp => (grp.Key.Level, grp.Value));
 }

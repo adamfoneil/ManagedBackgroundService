@@ -1,6 +1,7 @@
 @using ManagedBackgroundServices.Abstractions
 @using ManagedBackgroundServices.Abstractions.Infrastructure
 @using ManagedBackgroundServices.Abstractions.Logging
+@using Microsoft.Extensions.Logging
 @inject IManagedBackgroundServiceProvider BackgroundServices
 @inject IInMemoryLogQuery LogQuery
 
@@ -38,6 +39,16 @@
                         <span class="mbs-status-icon" aria-hidden="true">@GetStatusIcon(svc.Status)</span>
                         @svc.Status
                     </span>
+
+                    @if (_errorsByCategory is not null)
+                    {
+                        <span class="ms-3">
+                            @foreach (var err in _errorsByCategory[serviceCategory])
+                            {
+                                <span class="me-1">@err.Level: @err.Count</span>
+                            }
+                        </span>
+                    }                    
                 </td>
                 <td>@svc.StatusDateTimeUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
                 <td>
@@ -101,6 +112,10 @@
 @code {
     private readonly HashSet<string> _expandedServiceNames = [];
     private ILookup<string, LogEntry>? _logsByCategory;
+    private ILookup<string, (LogLevel Level, int Count)>? _errorsByCategory;
+
+    [Parameter] public int MaxLogsPerCategory { get; set; } = 10;
+    [Parameter] public int ErrorsLookMinutesBack { get; set; } = 30;
 
     private string GetStatusIcon(Status status) => status switch
     {
@@ -138,7 +153,8 @@
 
     protected override void OnInitialized()
     {
-        _logsByCategory = LogQuery.GetLogsByCategory();
+        _logsByCategory = LogQuery.GetLogsByCategory(maxPerCategory: MaxLogsPerCategory);
+        _errorsByCategory = LogQuery.GetErrorsByCategory(minutesBack: ErrorsLookMinutesBack);
     }
 
     private static string AgeExpression(TimeSpan age)
