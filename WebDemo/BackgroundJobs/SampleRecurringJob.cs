@@ -19,5 +19,5 @@ public class SampleRecurringJob(ILoggerFactory loggerFactory) : ScheduledBackgro
         await Task.CompletedTask;
     }
 
-    protected override DateTimeOffset GetNextRunTime(DateTimeOffset currentTime) => currentTime.Add(TimeSpan.FromSeconds(3));
+    protected override async Task<DateTimeOffset> GetNextRunTimeAsync(DateTimeOffset currentTime) => await Task.FromResult(currentTime.Add(TimeSpan.FromSeconds(3)));
 }

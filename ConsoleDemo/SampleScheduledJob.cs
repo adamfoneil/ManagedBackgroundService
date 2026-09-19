@@ -19,5 +19,5 @@ public class SampleScheduledJob(
         return Task.CompletedTask;
     }
 
-    protected override DateTimeOffset GetNextRunTime(DateTimeOffset currentTime) => _pattern.GetNextOccurrence(currentTime);
+    protected override async Task<DateTimeOffset> GetNextRunTimeAsync(DateTimeOffset currentTime) => await Task.FromResult(_pattern.GetNextOccurrence(currentTime));
 }

@@ -8,7 +8,7 @@ public abstract class ScheduledBackgroundService(
 {
     protected readonly TimeProvider TimeProvider = timeProvider;
 
-    protected abstract DateTimeOffset GetNextRunTime(DateTimeOffset currentTime);
+    protected abstract Task<DateTimeOffset> GetNextRunTimeAsync(DateTimeOffset currentTime);
 
     protected abstract Task ExecuteScheduledAsync(CancellationToken stoppingToken);
 
@@ -18,7 +18,7 @@ public abstract class ScheduledBackgroundService(
     {
         var now = TimeProvider.GetUtcNow();
 
-        var nextRunTime = GetNextRunTime(now);
+        var nextRunTime = await GetNextRunTimeAsync(now);
 
         if (nextRunTime <= NextRunTime)
         {

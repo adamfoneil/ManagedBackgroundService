@@ -9,6 +9,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();    
 
 builder.Services.AddManagedBackgroundService<SampleRecurringJob>();
+builder.Services.AddManagedBackgroundService<AnotherRecurringJob>();
 
 var app = builder.Build();
 
