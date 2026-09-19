@@ -38,12 +38,26 @@
 
                     @if (svc is IQueueConsumerPerformance queueSvc)
                     {
-                        <span class="ms-3">@queueSvc.ConsumeRate.ToString("n1") / @TimeSpanExpression(queueSvc.ConsumeRateSpan)</span>
+                        <br />
+                        <span class="small">@queueSvc.ConsumeRate.ToString("n1") / @TimeSpanExpression(queueSvc.ConsumeRateSpan)</span>
+                    }
+
+                    @if (svc is INextRun nextRun)
+                    {
+                        <br />
+                        <span class="small">runs <strong>@GetNextRunExpression(nextRun.NextRunTime)</strong> at @ConvertToLocalTime(nextRun.NextRunTime.DateTime).ToString("yyyy-MM-dd HH:mm:ss")</span>
+                    }
+
+                    @if (svc is ICurrentWork currentWork)
+                    {
+                        <br />
+                        <span class="small">@currentWork.CurrentWorkInfo</span>
                     }
 
                     @if (_errorsByCategory is not null)
                     {
-                        <span class="ms-3">
+                        <br />
+                        <span class="small">
                             @foreach (var err in _errorsByCategory[serviceCategory])
                             {
                                 <span class="me-1">@err.Level: @err.Count</span>
@@ -188,10 +202,22 @@
         service.Resume();
     }
 
-    private static string AgeExpression(DateTime dateTime) => TimeSpanExpression(DateTime.UtcNow - dateTime) + " ago";
+     private static string AgeExpression(DateTime dateTime) => TimeSpanExpression(DateTime.UtcNow - dateTime) + " ago";
 
     private static string AgeExpression(TimeSpan age) => TimeSpanExpression(age) + " ago";
-    
+
+    private static string GetNextRunExpression(DateTimeOffset nextRunTime)
+    {
+        var timeUntilRun = nextRunTime - DateTimeOffset.UtcNow;
+
+        if (timeUntilRun.TotalSeconds < 0)
+        {
+            return "now";
+        }
+
+        return "in " + TimeSpanExpression(timeUntilRun);
+    }
+
     private static string TimeSpanExpression(TimeSpan timeSpan)
     {
         if (timeSpan.TotalSeconds < 60) return $"{(int)timeSpan.TotalSeconds} seconds";

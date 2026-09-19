@@ -1,9 +1,10 @@
 ﻿using ManagedBackgroundServices.Abstractions;
+using ManagedBackgroundServices.Abstractions.Infrastructure;
 
 namespace WebDemo.BackgroundJobs;
 
 public class SampleRecurringJob(ILoggerFactory loggerFactory) : ScheduledBackgroundService(loggerFactory, TimeProvider.System)
-{
+{    
     protected override async Task ExecuteScheduledAsync(CancellationToken stoppingToken)
     {
         Logger.LogInformation("Scheduled job is running");

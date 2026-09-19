@@ -2,9 +2,14 @@
 
 namespace ManagedBackgroundServices.Abstractions;
 
+public interface INextRun
+{
+    public DateTimeOffset NextRunTime { get; }
+}
+
 public abstract class ScheduledBackgroundService(
     ILoggerFactory loggerFactory,
-    TimeProvider timeProvider) : ManagedBackgroundService(loggerFactory)
+    TimeProvider timeProvider) : ManagedBackgroundService(loggerFactory), INextRun
 {
     protected readonly TimeProvider TimeProvider = timeProvider;
 
