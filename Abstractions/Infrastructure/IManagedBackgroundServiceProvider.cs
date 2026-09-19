@@ -1,4 +1,4 @@
-namespace ManagedBackgroundServices.Abstractions;
+namespace ManagedBackgroundServices.Abstractions.Infrastructure;
 
 public interface IManagedBackgroundServiceProvider
 {

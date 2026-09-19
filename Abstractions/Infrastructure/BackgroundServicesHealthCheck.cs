@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace ManagedBackgroundServices.Abstractions;
+namespace ManagedBackgroundServices.Abstractions.Infrastructure;
 
 public class BackgroundServicesHealthCheck(IManagedBackgroundServiceProvider backgroundServices) : IHealthCheck
 {

@@ -1,12 +1,13 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using ManagedBackgroundServices.Abstractions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
-namespace ManagedBackgroundServices.Abstractions;
+namespace ManagedBackgroundServices.Abstractions.Infrastructure;
 
 public static class ServiceExtensions
 {
-    private const int DefaultInMemoryLogCapacity = 1000;
+    private const int DefaultInMemoryLogCapacity = 250;
 
     /// <summary>
     /// ensures that background service is added so you can inject it where needed and also ensure it runs in the background

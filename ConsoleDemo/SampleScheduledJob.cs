@@ -1,4 +1,5 @@
 ﻿using ManagedBackgroundServices.Abstractions;
+using ManagedBackgroundServices.Abstractions.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace Samples;

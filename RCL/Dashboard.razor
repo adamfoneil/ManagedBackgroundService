@@ -2,6 +2,12 @@
 @inject IManagedBackgroundServiceProvider BackgroundServices
 @inject IInMemoryLogQuery LogQuery
 
+@if (_logsByCategory is null) return;
+
+@{
+    var now = DateTime.UtcNow;
+}
+
 <table class="mbs-dashboard-table">
     <thead>
         <tr>
@@ -50,7 +56,7 @@
 
             @if (isExpanded)
             {
-                var logs = GetServiceLogs(serviceCategory);
+                var logs = _logsByCategory[serviceCategory];                
 
                 <tr class="mbs-log-row">
                     <td></td>
@@ -64,7 +70,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @if (logs.Count == 0)
+                                @if (!logs.Any())
                                 {
                                     <tr>
                                         <td colspan="3">No recent logs found.</td>
@@ -75,7 +81,7 @@
                                     @foreach (var entry in logs)
                                     {
                                         <tr>
-                                            <td>@entry.TimestampUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                            <td>@entry.TimestampUtc.ToString("yyyy-MM-dd HH:mm:ss") - @AgeExpression(entry.GetAge(now))</td>
                                             <td>@entry.Level</td>
                                             <td>@entry.Message</td>
                                         </tr>
@@ -92,6 +98,7 @@
 
 @code {
     private readonly HashSet<string> _expandedServiceNames = [];
+    private ILookup<string, LogEntry>? _logsByCategory;
 
     private string GetStatusIcon(Status status) => status switch
     {
@@ -117,9 +124,6 @@
         }
     }
 
-    private IReadOnlyList<LogEntry> GetServiceLogs(string serviceType) =>
-        LogQuery.GetLogs(category: serviceType, maxResults: 10);
-
     private void PauseService(ManagedBackgroundService service)
     {
         service.Pause();
@@ -128,5 +132,18 @@
     private void ResumeService(ManagedBackgroundService service)
     {
         service.Resume();
+    }
+
+    protected override void OnInitialized()
+    {
+        _logsByCategory = LogQuery.GetLogsByCategory();
+    }
+
+    private static string AgeExpression(TimeSpan age)
+    {
+        if (age.TotalSeconds < 60) return $"{(int)age.TotalSeconds} seconds ago";
+        if (age.TotalMinutes < 60) return $"{(int)age.TotalMinutes} minutes ago";
+        if (age.TotalHours < 24) return $"{(int)age.TotalHours} hours ago";
+        return $"{(int)age.TotalDays} days ago";
     }
 }

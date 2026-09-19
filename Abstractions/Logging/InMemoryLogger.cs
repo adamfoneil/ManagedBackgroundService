@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
-namespace ManagedBackgroundServices.Abstractions;
+namespace ManagedBackgroundServices.Abstractions.Logging;
 
 /// <summary>
 /// Represents a single log entry in the in-memory ring buffer
@@ -9,6 +9,7 @@ namespace ManagedBackgroundServices.Abstractions;
 public class LogEntry
 {
     public DateTime TimestampUtc { get; set; }
+    public TimeSpan GetAge(DateTime from) => from.Subtract(TimestampUtc);
     public LogLevel Level { get; set; }
     public string Category { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
@@ -127,9 +128,11 @@ public sealed class InMemoryLoggerProvider : ILoggerProvider, IInMemoryLogQuery
         {
             if (!IsEnabled(logLevel)) return;
 
+            var now = DateTime.UtcNow;
+
             var entry = new LogEntry
             {
-                TimestampUtc = DateTime.UtcNow,
+                TimestampUtc = now,                
                 Level = logLevel,
                 Category = _categoryName,
                 Message = formatter(state, exception),

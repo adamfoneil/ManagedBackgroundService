@@ -1,4 +1,4 @@
-﻿using ManagedBackgroundServices.Abstractions;
+﻿using ManagedBackgroundServices.Abstractions.Infrastructure;
 
 namespace Testing;
 
