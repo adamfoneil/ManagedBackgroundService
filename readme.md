@@ -38,3 +38,16 @@ Note that health checks are a [bigger topic](https://learn.microsoft.com/en-us/a
 - [ScheduledBackgroundService](Abstractions/ScheduledBackgroundService.cs) is for running scheduled jobs. You must implement the `ExecuteScheduledAsync` and `GetNextRunTime` methods. You can use something like [Cronos](https://github.com/HangfireIO/Cronos) with standard cron expressions to do this. One reason I made this class though is I find cron expressions hard to use, so I introduced my own feature [RecurrencePattern](Abstractions/Infrastructure/RecurrencePattern.cs) which is my alternative to cron. See [tests](Testing/RecurrencePatternTests.cs) to see how to use this. In essence, you write expressions like this:
     - `d[mon..fri] t[9:30am, 3:30pm] tz:America/New_York` = Monday through Friday at 9:30am and 3:30pm, eastern time
     - `*90min b[7:30, 15:30]` = every 90 minutes between 7:30am and 3:30pm UTC
+
+# Logging Features
+`ManagedBackgroundService` requires an `ILoggerFactory`. Do not inject your own `ILogger<T>` type. This way, your derived classes will automatically get logs categorized for the derived type name rather than the base class.
+
+An in-memory logger [InMemoryLogger](Abstractions/Logging/InMemoryLogger.cs) is added when you add background jobs to your service collection. This gives you access to your jobs' activity without relying on a particular observability solution. Any other logging providers you've configured will still work. The [Dashboard](RCL/Dashboard.razor) Blazor component presents running job info with related logs using the [IInMemoryLogQuery](Abstractions/Logging/IInMemoryLogQuery.cs) interface, which offers a few common log queries.
+
+# Razor Class Library
+The [RCL](/RCL/RCL.csproj) project has components for Blazor Server apps for managing jobs, in particular:
+- [Dashboard](RCL/Dashboard.razor) used here in the [demo page](WebDemo/Components/Pages/Home.razor)
+
+![img](dashboard-demo.png)
+
+
