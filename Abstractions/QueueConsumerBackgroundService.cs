@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace ManagedBackgroundServices.Abstractions;
 
@@ -8,24 +9,27 @@ public interface IQueueConsumerPerformance
     TimeSpan ConsumeRateSpan { get; }
 }
 
-public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory), IQueueConsumerPerformance
-{    
-    protected abstract Task<TMessage[]> TryDequeueAsync(int batchSize, CancellationToken stoppingToken);
+public delegate Task QueueMessageHandler(object message, CancellationToken stoppingToken);
 
-    protected abstract Task ExecuteQueuedWorkAsync(TMessage message, CancellationToken stoppingToken);
+public abstract class QueueConsumerBackgroundService(
+    ILoggerFactory loggerFactory,
+    PersistentQueue persistentQueue) : ManagedBackgroundService(loggerFactory), IQueueConsumerPerformance
+{
+    private readonly PersistentQueue _persistentQueue = persistentQueue;
 
-    protected virtual async Task OnMessageFailedAsync(TMessage message, Exception exception)
+    /// <summary>
+    /// Returns a registry mapping TypeName to message handler instances.
+    /// Key: TypeName (as stored in QueueMessage.TypeName)
+    /// Value: IMessageHandler implementation for that type
+    /// </summary>
+    protected abstract IReadOnlyDictionary<string, QueueMessageHandler> MessageHandlers { get; }
+
+    protected virtual async Task OnMessageFailedAsync(PersistentQueue.QueueMessage queueMessage, object? messageObject, Exception exception)
     {
         // do nothing by default
         await Task.CompletedTask;
     }
-
-    protected virtual async Task OnMessageCompletedAsync(TMessage message)
-    {
-        // do nothing by default
-        await Task.CompletedTask;
-    }
-
+    
     protected virtual TimeSpan EmptyQueueDelay => TimeSpan.FromSeconds(5);
     protected virtual TimeSpan ProcessingDelay => TimeSpan.Zero;
     protected virtual int DequeueBatchSize { get => 3; }
@@ -33,7 +37,7 @@ public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory lo
 
     private int _consumed = 0;
     private DateTime _windowStart = DateTime.UtcNow;
-
+    
     public decimal ConsumeRate
     {
         get
@@ -54,10 +58,10 @@ public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory lo
     }
 
     protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
-    {
+    {        
         while (!stoppingToken.IsCancellationRequested)
         {
-            var messages = await TryDequeueAsync(DequeueBatchSize, stoppingToken);
+            var messages = await _persistentQueue.DequeueAsync(DequeueBatchSize, stoppingToken);
 
             if (!messages.Any())
             {
@@ -65,30 +69,60 @@ public abstract class QueueConsumerBackgroundService<TMessage>(ILoggerFactory lo
                 continue;
             }
 
-            foreach (var msg in messages)
+            foreach (var queueMessage in messages)
             {
+                object? msgObject = null;
+
                 try
                 {
-                    await ExecuteQueuedWorkAsync(msg, stoppingToken);
-                    _consumed++;
+                    if (!MessageHandlers.TryGetValue(queueMessage.TypeName, out var handler))
+                    {
+                        Logger.LogWarning("No handler registered for message type {TypeName}", queueMessage.TypeName);
+                        continue;
+                    }
 
-                    try
+                    msgObject = DeserializeMessage(queueMessage.TypeName, queueMessage.JsonData);
+                    if (msgObject is null)
                     {
-                        await OnMessageCompletedAsync(msg);
+                        Logger.LogWarning("Message json deserialized to null: {data}", queueMessage.JsonData);
+                        continue;
                     }
-                    catch (Exception exc)
-                    {
-                        Logger.LogError(exc, "Error in OnMessageCompletedAsync with {@message}", msg);
-                    }
+
+                    await handler.Invoke(msgObject, stoppingToken);
+                    _consumed++;                    
                 }
                 catch (Exception exc)
                 {
-                    Logger.LogError(exc, "Error in queue consumer {type} with {@message}", GetType().Name, msg);
-                    await OnMessageFailedAsync(msg, exc);
+                    Logger.LogError(exc, "Error processing message type {TypeName}", queueMessage.TypeName);
+                    await OnMessageFailedAsync(queueMessage, msgObject, exc);
                 }
             }
 
             await Task.Delay(ProcessingDelay, stoppingToken);
+        }
+    }
+
+    /// <summary>
+    /// Deserializes JsonData to the appropriate type based on TypeName.
+    /// Override to customize type resolution logic (e.g., namespace handling).
+    /// </summary>
+    protected virtual object? DeserializeMessage(string typeName, string jsonData)
+    {
+        var messageType = Type.GetType(typeName);
+        if (messageType == null)
+        {
+            Logger.LogWarning("Could not resolve type {TypeName}", typeName);
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize(jsonData, messageType);
+        }
+        catch (Exception exc)
+        {
+            Logger.LogError(exc, "Failed to deserialize message of type {TypeName}", typeName);
+            throw;
         }
     }
 }

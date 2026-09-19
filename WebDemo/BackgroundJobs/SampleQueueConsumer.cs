@@ -3,21 +3,26 @@ using ManagedBackgroundServices.Abstractions.Infrastructure;
 
 namespace WebDemo.BackgroundJobs;
 
-public class SampleQueueConsumer(ILoggerFactory loggerFactory) : QueueConsumerBackgroundService<string>(loggerFactory), ICurrentWork
+public record SampleMessage(string Content);
+
+public class SampleQueueConsumer(ILoggerFactory loggerFactory, PersistentQueue persistentQueue) 
+    : QueueConsumerBackgroundService(loggerFactory, persistentQueue), IStatusMessage
 {
-    public string CurrentWorkInfo { get; private set; } = string.Empty;
+    public string StatusMessage { get; private set; } = string.Empty;
 
-    protected override async Task ExecuteQueuedWorkAsync(string message, CancellationToken stoppingToken)
+    protected override IReadOnlyDictionary<string, QueueMessageHandler> MessageHandlers =>
+        new Dictionary<string, QueueMessageHandler>
+        {
+            [nameof(SampleMessage)] = HandleSampleMessage
+        };    
+
+    async Task HandleSampleMessage(object message, CancellationToken cancellationToken)
     {
-        Logger.LogInformation("Consuming message: {message}", message);
-
-        CurrentWorkInfo = $"Processing message: {message}";
-
-        await Task.Delay(Random.Shared.Next(2, 7) * 1000, stoppingToken);
-    }
-
-    protected override async Task<string[]> TryDequeueAsync(int batchSize, CancellationToken stoppingToken)
-    {        
-        return ["hello", "goodbye", "whatever"];
+        if (message is SampleMessage sampleMessage)
+        {
+            Logger.LogInformation("Processing message: {message}", sampleMessage.Content);
+            StatusMessage = $"Processing message: {sampleMessage.Content}";
+            await Task.Delay(Random.Shared.Next(2, 7) * 1000, cancellationToken);
+        }
     }
 }

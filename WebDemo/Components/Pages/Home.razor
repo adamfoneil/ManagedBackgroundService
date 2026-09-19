@@ -1,9 +1,24 @@
 ﻿@page "/"
+@using ManagedBackgroundServices.Abstractions
 @using RCL
+@using WebDemo.BackgroundJobs
+@inject PersistentQueue Queue
 
 <PageTitle>Home</PageTitle>
 
 <Dashboard TimeZoneId="America/New_York" />
 
-@code { 
+<div class="mt-4">
+    <input type="text" @bind-value="@_sampleMessage" maxlength="100" />
+    <button @onclick="Enqueue" disabled="@(_sampleMessage is null)">Enqueue</button>
+</div>
+
+@code {
+    private string? _sampleMessage;
+
+    private async Task Enqueue()
+    {        
+        await Queue.EnqueueAsync(new SampleMessage(_sampleMessage!));
+        _sampleMessage = null;
+    }
 }

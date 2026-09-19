@@ -48,10 +48,10 @@
                         <span class="small">runs <strong>@GetNextRunExpression(nextRun.NextRunTime)</strong> at @ConvertToLocalTime(nextRun.NextRunTime.DateTime).ToString("yyyy-MM-dd HH:mm:ss")</span>
                     }
 
-                    @if (svc is ICurrentWork currentWork)
+                    @if (svc is IStatusMessage status)
                     {
                         <br />
-                        <span class="small">@currentWork.CurrentWorkInfo</span>
+                        <span class="small">@status.StatusMessage</span>
                     }
 
                     @if (_errorsByCategory is not null)
