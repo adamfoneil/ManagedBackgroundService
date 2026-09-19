@@ -10,6 +10,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddManagedBackgroundService<SampleRecurringJob>();
 builder.Services.AddManagedBackgroundService<AnotherRecurringJob>();
+builder.Services.AddManagedBackgroundService<SampleQueueConsumer>();
 
 var app = builder.Build();
 

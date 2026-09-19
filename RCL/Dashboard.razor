@@ -40,6 +40,11 @@
                         @svc.Status
                     </span>
 
+                    @if (svc is IQueueConsumerPerformance queueSvc)
+                    {
+                        <span class="ms-3">@queueSvc.ConsumeRate.ToString("n1") / @TimeSpanExpression(queueSvc.ConsumeRateReferenceSpan)</span>
+                    }
+
                     @if (_errorsByCategory is not null)
                     {
                         <span class="ms-3">
@@ -48,7 +53,7 @@
                                 <span class="me-1">@err.Level: @err.Count</span>
                             }
                         </span>
-                    }                    
+                    }
                 </td>
                 <td>@svc.StatusDateTimeUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
                 <td>
@@ -157,11 +162,13 @@
         _errorsByCategory = LogQuery.GetErrorsByCategory(minutesBack: ErrorsLookMinutesBack);
     }
 
-    private static string AgeExpression(TimeSpan age)
+    private static string AgeExpression(TimeSpan age) => TimeSpanExpression(age) + " ago";
+    
+    private static string TimeSpanExpression(TimeSpan timeSpan)
     {
-        if (age.TotalSeconds < 60) return $"{(int)age.TotalSeconds} seconds ago";
-        if (age.TotalMinutes < 60) return $"{(int)age.TotalMinutes} minutes ago";
-        if (age.TotalHours < 24) return $"{(int)age.TotalHours} hours ago";
-        return $"{(int)age.TotalDays} days ago";
+        if (timeSpan.TotalSeconds < 60) return $"{(int)timeSpan.TotalSeconds} seconds";
+        if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes} minutes";
+        if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours} hours";
+        return $"{(int)timeSpan.TotalDays} days";
     }
 }
