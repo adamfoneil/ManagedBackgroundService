@@ -15,9 +15,9 @@ public abstract class DurableQueue
         string MachineName,
         string JsonData);
 
-    public async Task EnqueueAsync<T>(T payload)
+    public async Task EnqueueAsync<T>(T payload, JsonSerializerOptions? options = null)
     {
-        var payloadJson = JsonSerializer.Serialize(payload);
+        var payloadJson = JsonSerializer.Serialize(payload, options);
         await StoreMessageAsync(new(DateTime.UtcNow, $"{typeof(T).FullName!}, {typeof(T).Assembly.GetName()}", typeof(T).Name, Environment.MachineName, payloadJson));
     }
 
