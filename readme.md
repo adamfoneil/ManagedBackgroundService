@@ -30,6 +30,12 @@ services.AddHealthChecks().AddCheck<BackgroundServicesHealthCheck>("Background S
 ```
 Note that health checks are a [bigger topic](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0) -- there are different ways to fine tune and serve health checks that are outside the scope of this project.
 
+When using `QueueConsumerBackgroundService` add `PersistentQueue` singleton at startup like this. This is an example from the [demo project](WebDemo/Program.cs).
+
+```csharp
+builder.Services.AddSingleton<DurableQueue>(new SqLiteDurableQueue("queue.db"));
+```
+
 # Derived Classes
 
 `ManagedBackgroundService` powers these two derived classes:
@@ -41,6 +47,9 @@ Note that health checks are a [bigger topic](https://learn.microsoft.com/en-us/a
     - Performance tracking via `IQueueConsumerPerformance` (consume rate per configurable time window)
     - Configurable delays: `EmptyQueueDelay` (how long to wait when queue is empty) and `ProcessingDelay` (delay between batches)
     - Database-agnostic design: implement queue dequeue logic using platform-specific best practices (e.g., SQL Server's `DELETE ... OUTPUT`, Postgres's `FOR UPDATE SKIP LOCKED`, etc.)
+    
+See example [SampleQueueConsumer](WebDemo/BackgroundJobs/SampleQueueConsumer.cs) along with the enqueue example in [Home.razor](WebDemo/Components/Pages/Home.razor).
+
 - [ScheduledBackgroundService](Abstractions/ScheduledBackgroundService.cs) is for running scheduled jobs. You must implement the `ExecuteScheduledAsync` and `GetNextRunTime` methods. You can use something like [Cronos](https://github.com/HangfireIO/Cronos) with standard cron expressions to do this. One reason I made this class though is I find cron expressions hard to use, so I introduced my own feature [RecurrencePattern](Abstractions/Infrastructure/RecurrencePattern.cs) which is my alternative to cron. See [tests](Testing/RecurrencePatternTests.cs) to see how to use this. In essence, you write expressions like this:
     - `d[mon..fri] t[9:30am, 3:30pm] tz:America/New_York` = Monday through Friday at 9:30am and 3:30pm, eastern time
     - `*90min b[7:30, 15:30]` = every 90 minutes between 7:30am and 3:30pm UTC
