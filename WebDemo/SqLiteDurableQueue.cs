@@ -63,10 +63,10 @@ public class SqLiteDurableQueue : DurableQueue
             var messages = await connection.QueryAsync<(long id, string timestamp, string type_name, string handler_name, string machine_name, string json_data)>($@"
                         SELECT id, timestamp, type_name, handler_name, machine_name, json_data 
                         FROM {_tableName}
-                        WHERE processed = 0
+                        WHERE processed = 0 AND machine_name = @MachineName
                         ORDER BY id ASC
                         LIMIT @BatchSize",
-                    new { BatchSize = batchSize },
+                    new { BatchSize = batchSize, MachineName = machineName },
                     transaction: transaction);
 
             if (messages.Any())
@@ -94,12 +94,6 @@ public class SqLiteDurableQueue : DurableQueue
             transaction.Rollback();
             throw;
         }        
-    }
-
-    public override async Task<QueueMessage[]> DequeueAsync(int batchSize, CancellationToken stoppingToken)
-    {
-        var messages = await DequeueMessagesAsync(batchSize, Environment.MachineName, stoppingToken);
-        return messages.ToArray();
     }
 }
 

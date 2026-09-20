@@ -21,5 +21,9 @@ public abstract class DurableQueue
         await StoreMessageAsync(new(DateTime.UtcNow, $"{typeof(T).FullName!}, {typeof(T).Assembly.GetName()}", typeof(T).Name, Environment.MachineName, payloadJson));
     }
 
-    public abstract Task<QueueMessage[]> DequeueAsync(int batchSize, CancellationToken stoppingToken);
+    public async Task<QueueMessage[]> DequeueAsync(int batchSize, CancellationToken stoppingToken)
+    {
+        var messages = await DequeueMessagesAsync(batchSize, Environment.MachineName, stoppingToken);
+        return [.. messages];
+    }
 }

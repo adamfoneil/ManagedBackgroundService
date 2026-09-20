@@ -89,7 +89,8 @@ public abstract class QueueConsumerBackgroundService(
                     }
 
                     await handler.Invoke(msgObject, stoppingToken);
-                    _consumed++;                    
+                    _consumed++;
+                    // todo: track avg wait time in queue?
                 }
                 catch (Exception exc)
                 {
