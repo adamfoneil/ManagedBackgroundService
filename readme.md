@@ -33,7 +33,7 @@ Note that health checks are a [bigger topic](https://learn.microsoft.com/en-us/a
 When using `QueueConsumerBackgroundService` add `PersistentQueue` singleton at startup like this. This is an example from the [demo project](WebDemo/Program.cs).
 
 ```csharp
-builder.Services.AddSingleton<DurableQueue>(new SqLiteDurableQueue("queue.db"));
+builder.Services.AddDurableQueue(new SqLiteDurableQueue("queue.db"));
 ```
 
 # Derived Classes

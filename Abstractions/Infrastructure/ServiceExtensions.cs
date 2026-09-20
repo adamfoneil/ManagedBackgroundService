@@ -1,4 +1,5 @@
 ﻿using ManagedBackgroundServices.Abstractions.Logging;
+using ManagedBackgroundServices.Abstractions.Queues;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -33,6 +34,18 @@ public static class ServiceExtensions
         if (maxCapacity <= 0) throw new ArgumentOutOfRangeException(nameof(maxCapacity), "Capacity must be greater than zero.");
 
         AddInMemoryLoggerInfrastructure(services, maxCapacity);
+    }
+
+    public static void AddDurableQueue<T>(this IServiceCollection services, Func<IServiceProvider, T> factory) where T : DurableQueue
+    {
+        if (services is null) throw new ArgumentNullException(nameof(services));
+        if (factory is null) throw new ArgumentNullException(nameof(factory));
+        services.AddSingleton<T>(factory);
+    }
+
+    public static void AddDurableQueue<T>(this IServiceCollection services, T instance) where T : DurableQueue
+    {
+        services.AddSingleton<T>(instance);
     }
 
     private static void AddManagedBackgroundServiceInfrastructure(IServiceCollection services)

@@ -1,5 +1,4 @@
 using ManagedBackgroundServices.Abstractions.Infrastructure;
-using ManagedBackgroundServices.Abstractions.Queues;
 using WebDemo;
 using WebDemo.BackgroundJobs;
 using WebDemo.Components;
@@ -8,9 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();    
+    .AddInteractiveServerComponents();
 
-builder.Services.AddSingleton<DurableQueue>(new SqLiteDurableQueue("queue.db"));
+builder.Services.AddDurableQueue(new SqLiteDurableQueue("queue.db"));
 builder.Services.AddManagedBackgroundService<SampleRecurringJob>();
 builder.Services.AddManagedBackgroundService<AnotherRecurringJob>();
 builder.Services.AddManagedBackgroundService<SampleQueueConsumer>();
