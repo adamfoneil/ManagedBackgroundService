@@ -1,4 +1,5 @@
 ﻿using ManagedBackgroundServices.Abstractions.Infrastructure;
+using ManagedBackgroundServices.Abstractions.Scheduling;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

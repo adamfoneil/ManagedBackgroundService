@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace ManagedBackgroundServices.Abstractions.Infrastructure;
+namespace ManagedBackgroundServices.Abstractions.Scheduling;
 
 public sealed class RecurrencePattern
 {

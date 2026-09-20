@@ -1,5 +1,5 @@
-﻿using ManagedBackgroundServices.Abstractions;
-using ManagedBackgroundServices.Abstractions.Infrastructure;
+﻿using ManagedBackgroundServices.Abstractions.Infrastructure;
+using ManagedBackgroundServices.Abstractions.Scheduling;
 
 namespace WebDemo.BackgroundJobs;
 
