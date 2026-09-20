@@ -9,7 +9,7 @@ public interface IQueueConsumerPerformance
     TimeSpan ConsumeRateSpan { get; }
 }
 
-public delegate Task QueueMessageHandler<T>(DurableQueue.QueueMessage rawMessage, T message, CancellationToken stoppingToken) where T : notnull;
+public delegate Task QueueMessageHandler<T>(DurableQueue.Message rawMessage, T message, CancellationToken stoppingToken) where T : notnull;
 
 public abstract class QueueConsumerBackgroundService(
     ILoggerFactory loggerFactory,
@@ -24,7 +24,7 @@ public abstract class QueueConsumerBackgroundService(
     /// </summary>
     protected abstract void RegisterHandlers();
 
-    protected virtual async Task OnMessageFailedAsync(DurableQueue.QueueMessage queueMessage, object? messageObject, Exception exception)
+    protected virtual async Task OnMessageFailedAsync(DurableQueue.Message queueMessage, object? messageObject, Exception exception)
     {
         // do nothing by default
         await Task.CompletedTask;

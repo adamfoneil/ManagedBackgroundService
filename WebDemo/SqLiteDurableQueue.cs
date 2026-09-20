@@ -33,7 +33,7 @@ public class SqLiteDurableQueue : DurableQueue
             )");
     }
 
-    protected override async Task StoreMessageAsync(QueueMessage message)
+    protected override async Task StoreMessageAsync(Message message)
     {
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
@@ -52,7 +52,7 @@ public class SqLiteDurableQueue : DurableQueue
             });
     }
 
-    protected override async Task<IEnumerable<QueueMessage>> DequeueMessagesAsync(int batchSize, string machineName, CancellationToken stoppingToken)
+    protected override async Task<IEnumerable<Message>> DequeueMessagesAsync(int batchSize, string machineName, CancellationToken stoppingToken)
     {
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
@@ -83,7 +83,7 @@ public class SqLiteDurableQueue : DurableQueue
 
             transaction.Commit();
 
-            return [.. messages.Select(m => new QueueMessage(
+            return [.. messages.Select(m => new Message(
                 DateTime.Parse(m.timestamp),
                 m.type_name,
                 m.handler_name,
