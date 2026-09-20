@@ -34,7 +34,7 @@ Note that health checks are a [bigger topic](https://learn.microsoft.com/en-us/a
 
 `ManagedBackgroundService` powers these two derived classes:
 
-- [QueueConsumerBackgroundService](Abstractions/QueueConsumerBackgroundService.cs). You must implement a `PersistentQueue` abstraction that handles your underlying storage mechanism (relational database, cloud queues, etc.). The queue consumer uses a message handler registry pattern where you map message type names to handler delegates. Key features include:
+- [QueueConsumerBackgroundService](Abstractions/Queues/QueueConsumerBackgroundService.cs). You must implement a `PersistentQueue` abstraction that handles your underlying storage mechanism (relational database, cloud queues, etc.). The queue consumer uses a message handler registry pattern where you map message type names to handler delegates. Key features include:
     - Batch dequeuing with configurable batch size
     - Automatic deserialization of messages based on stored type information
     - Error handling via the `OnMessageFailedAsync` hook for custom retry or dead-letter logic
