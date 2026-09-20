@@ -41,11 +41,13 @@ public static class ServiceExtensions
         if (services is null) throw new ArgumentNullException(nameof(services));
         if (factory is null) throw new ArgumentNullException(nameof(factory));
         services.AddSingleton<T>(factory);
+        services.AddSingleton<DurableQueue>(sp => sp.GetRequiredService<T>());
     }
 
     public static void AddDurableQueue<T>(this IServiceCollection services, T instance) where T : DurableQueue
     {
         services.AddSingleton<T>(instance);
+        services.AddSingleton<DurableQueue>(instance);
     }
 
     private static void AddManagedBackgroundServiceInfrastructure(IServiceCollection services)

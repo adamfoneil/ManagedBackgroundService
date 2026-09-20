@@ -9,7 +9,7 @@ public interface IQueueConsumerPerformance
     TimeSpan ConsumeRateSpan { get; }
 }
 
-public delegate Task QueueMessageHandler<T>(T message, CancellationToken stoppingToken) where T : notnull;
+public delegate Task QueueMessageHandler<T>(DurableQueue.QueueMessage rawMessage, T message, CancellationToken stoppingToken) where T : notnull;
 
 public abstract class QueueConsumerBackgroundService(
     ILoggerFactory loggerFactory,
@@ -90,7 +90,7 @@ public abstract class QueueConsumerBackgroundService(
                         continue;
                     }
 
-                    await (Task)handler!.DynamicInvoke(msgObject, stoppingToken)!;
+                    await (Task)handler!.DynamicInvoke(queueMessage, msgObject, stoppingToken)!;
                     _consumed++;
                     // todo: track avg wait time in queue?
                 }

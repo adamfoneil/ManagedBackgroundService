@@ -12,9 +12,9 @@ public class SampleQueueConsumer(ILoggerFactory loggerFactory, DurableQueue pers
         Registry.With<SampleMessage>(nameof(SampleMessage), HandleSampleMessage);
     }
 
-    async Task HandleSampleMessage(SampleMessage message, CancellationToken cancellationToken)
+    async Task HandleSampleMessage(DurableQueue.QueueMessage rawMessage, SampleMessage message, CancellationToken cancellationToken)
     {
-        Logger.LogInformation("Processing message: {message}", message.Content);
+        Logger.LogInformation("Processing from {user} message: {message}", rawMessage.UserName, message.Content);
         await Task.Delay(Random.Shared.Next(2, 7) * 1000, cancellationToken);
     }
 }

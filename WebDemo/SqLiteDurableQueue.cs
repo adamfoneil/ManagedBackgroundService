@@ -27,6 +27,7 @@ public class SqLiteDurableQueue : DurableQueue
                 handler_name TEXT NOT NULL,
                 machine_name TEXT NOT NULL,
                 json_data TEXT NOT NULL,
+                user_name TEXT NULL,
                 created_at TEXT NOT NULL,
                 processed INTEGER DEFAULT 0
             )");
@@ -37,14 +38,15 @@ public class SqLiteDurableQueue : DurableQueue
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
         await connection.ExecuteAsync($@"
-                INSERT INTO {_tableName} (timestamp, type_name, handler_name, machine_name, json_data, created_at)
-                VALUES (@Timestamp, @TypeName, @HandlerName, @MachineName, @JsonData, @CreatedAt)",
+                INSERT INTO {_tableName} (timestamp, type_name, handler_name, machine_name, user_name, json_data, created_at)
+                VALUES (@Timestamp, @TypeName, @HandlerName, @MachineName, @UserName, @JsonData, @CreatedAt)",
             new
             {
                 message.Timestamp,
                 message.TypeName,
                 message.HandlerName,
                 message.MachineName,
+                message.UserName,
                 message.JsonData,
                 CreatedAt = DateTime.UtcNow
             });
@@ -60,8 +62,8 @@ public class SqLiteDurableQueue : DurableQueue
 
         try
         {
-            var messages = await connection.QueryAsync<(long id, string timestamp, string type_name, string handler_name, string machine_name, string json_data)>($@"
-                        SELECT id, timestamp, type_name, handler_name, machine_name, json_data 
+            var messages = await connection.QueryAsync<(long id, string timestamp, string type_name, string handler_name, string machine_name, string user_name, string json_data)>($@"
+                        SELECT id, timestamp, type_name, handler_name, machine_name, user_name, json_data 
                         FROM {_tableName}
                         WHERE processed = 0 AND machine_name = @MachineName
                         ORDER BY id ASC
@@ -85,8 +87,9 @@ public class SqLiteDurableQueue : DurableQueue
                 DateTime.Parse(m.timestamp),
                 m.type_name,
                 m.handler_name,
-                m.machine_name,
-                m.json_data
+                m.machine_name,                
+                m.json_data,
+                m.user_name
             ))];
         }
         catch 

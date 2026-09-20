@@ -12,13 +12,14 @@ public abstract class DurableQueue
         DateTime Timestamp,
         string TypeName, // full type name needed for json deserialization
         string HandlerName, // needed for handler routing (short type name)
-        string MachineName,
-        string JsonData);
+        string MachineName,        
+        string JsonData,
+        string? UserName = null);
 
-    public async Task EnqueueAsync<T>(T payload, JsonSerializerOptions? options = null)
+    public async Task EnqueueAsync<T>(T payload, string? userName = null, JsonSerializerOptions? options = null)
     {
         var payloadJson = JsonSerializer.Serialize(payload, options);
-        await StoreMessageAsync(new(DateTime.UtcNow, $"{typeof(T).FullName!}, {typeof(T).Assembly.GetName()}", typeof(T).Name, Environment.MachineName, payloadJson));
+        await StoreMessageAsync(new(DateTime.UtcNow, $"{typeof(T).FullName!}, {typeof(T).Assembly.GetName()}", typeof(T).Name, Environment.MachineName, payloadJson, userName));
     }
 
     public async Task<QueueMessage[]> DequeueAsync(int batchSize, CancellationToken stoppingToken)

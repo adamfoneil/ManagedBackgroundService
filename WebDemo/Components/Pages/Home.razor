@@ -18,7 +18,7 @@
 
     private async Task Enqueue()
     {        
-        await Queue.EnqueueAsync(new SampleMessage(_sampleMessage!));
+        await Queue.EnqueueAsync(new SampleMessage(_sampleMessage!), "sample-user");
         _sampleMessage = null;
     }
 }
