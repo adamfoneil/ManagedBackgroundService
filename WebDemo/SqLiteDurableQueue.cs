@@ -72,7 +72,7 @@ public class SqLiteDurableQueue : DurableQueue
             if (messages.Any())
             {
                 var ids = messages.Select(m => m.id).ToList();
-                connection.Execute($@"
+                await connection.ExecuteAsync($@"
                             UPDATE {_tableName}
                             SET processed = 1
                             WHERE id IN ({string.Join(",", ids)})",
