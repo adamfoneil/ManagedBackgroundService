@@ -4,12 +4,12 @@ using ManagedBackgroundServices.Abstractions;
 
 namespace WebDemo;
 
-public class SqLitePersistentQueue : PersistentQueue
+public class SqLiteDurableQueue : DurableQueue
 {
     private readonly string _connectionString;
     private readonly string _tableName = "queue_messages";
 
-    public SqLitePersistentQueue(string databasePath = "queue.db")
+    public SqLiteDurableQueue(string databasePath = "queue.db")
     {
         _connectionString = $"Data Source={databasePath}";
         InitializeDatabase();

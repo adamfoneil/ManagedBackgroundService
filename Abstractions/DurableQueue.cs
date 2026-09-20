@@ -2,7 +2,7 @@
 
 namespace ManagedBackgroundServices.Abstractions;
 
-public abstract class PersistentQueue
+public abstract class DurableQueue
 {
     protected abstract Task StoreMessageAsync(QueueMessage message);
 

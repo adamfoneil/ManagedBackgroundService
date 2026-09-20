@@ -13,18 +13,18 @@ public delegate Task QueueMessageHandler(object message, CancellationToken stopp
 
 public abstract class QueueConsumerBackgroundService(
     ILoggerFactory loggerFactory,
-    PersistentQueue persistentQueue) : ManagedBackgroundService(loggerFactory), IQueueConsumerPerformance
+    DurableQueue persistentQueue) : ManagedBackgroundService(loggerFactory), IQueueConsumerPerformance
 {
-    private readonly PersistentQueue _persistentQueue = persistentQueue;
+    private readonly DurableQueue _persistentQueue = persistentQueue;
 
     /// <summary>
     /// Returns a registry mapping TypeName to message handler instances.
     /// Key: TypeName (as stored in QueueMessage.TypeName)
     /// Value: IMessageHandler implementation for that type
     /// </summary>
-    protected abstract IReadOnlyDictionary<string, QueueMessageHandler> MessageHandlers { get; }
+    protected abstract Dictionary<string, QueueMessageHandler> MessageHandlers { get; }
 
-    protected virtual async Task OnMessageFailedAsync(PersistentQueue.QueueMessage queueMessage, object? messageObject, Exception exception)
+    protected virtual async Task OnMessageFailedAsync(DurableQueue.QueueMessage queueMessage, object? messageObject, Exception exception)
     {
         // do nothing by default
         await Task.CompletedTask;

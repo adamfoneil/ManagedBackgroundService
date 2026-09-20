@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();    
 
-builder.Services.AddSingleton<PersistentQueue>(new SqLitePersistentQueue("queue.db"));
+builder.Services.AddSingleton<DurableQueue>(new SqLiteDurableQueue("queue.db"));
 builder.Services.AddManagedBackgroundService<SampleRecurringJob>();
 builder.Services.AddManagedBackgroundService<AnotherRecurringJob>();
 builder.Services.AddManagedBackgroundService<SampleQueueConsumer>();
