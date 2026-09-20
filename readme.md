@@ -34,7 +34,13 @@ Note that health checks are a [bigger topic](https://learn.microsoft.com/en-us/a
 
 `ManagedBackgroundService` powers these two derived classes:
 
-- [QueueConsumerBackgroundService](Abstractions/QueueConsumerBackgroundService.cs). You must implement the `TryDequeueAsync` and `ExecuteQueuedWorkAsync` methods. This is completely agnostic about the underlying storage mechanism, so any queue provider can work. The intent is for using a relational database. Depending on your specific platform, there are unique approaches to implementing queues effectively in a database which are beyond the scope of this project. So for example, SQL Server should use the `DELETE ... OUTPUT` pattern to assure that queue message are read exactly once by competing consumers. Similarly, in Postgres you should use `FOR UPDATE SKIP LOCKED` when querying queue rows. But again -- those details are out of scope here.
+- [QueueConsumerBackgroundService](Abstractions/QueueConsumerBackgroundService.cs). You must implement a `PersistentQueue` abstraction that handles your underlying storage mechanism (relational database, cloud queues, etc.). The queue consumer uses a message handler registry pattern where you map message type names to handler delegates. Key features include:
+    - Batch dequeuing with configurable batch size
+    - Automatic deserialization of messages based on stored type information
+    - Error handling via the `OnMessageFailedAsync` hook for custom retry or dead-letter logic
+    - Performance tracking via `IQueueConsumerPerformance` (consume rate per configurable time window)
+    - Configurable delays: `EmptyQueueDelay` (how long to wait when queue is empty) and `ProcessingDelay` (delay between batches)
+    - Database-agnostic design: implement queue dequeue logic using platform-specific best practices (e.g., SQL Server's `DELETE ... OUTPUT`, Postgres's `FOR UPDATE SKIP LOCKED`, etc.)
 - [ScheduledBackgroundService](Abstractions/ScheduledBackgroundService.cs) is for running scheduled jobs. You must implement the `ExecuteScheduledAsync` and `GetNextRunTime` methods. You can use something like [Cronos](https://github.com/HangfireIO/Cronos) with standard cron expressions to do this. One reason I made this class though is I find cron expressions hard to use, so I introduced my own feature [RecurrencePattern](Abstractions/Infrastructure/RecurrencePattern.cs) which is my alternative to cron. See [tests](Testing/RecurrencePatternTests.cs) to see how to use this. In essence, you write expressions like this:
     - `d[mon..fri] t[9:30am, 3:30pm] tz:America/New_York` = Monday through Friday at 9:30am and 3:30pm, eastern time
     - `*90min b[7:30, 15:30]` = every 90 minutes between 7:30am and 3:30pm UTC
