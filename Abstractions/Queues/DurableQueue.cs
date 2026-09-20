@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace ManagedBackgroundServices.Abstractions;
+namespace ManagedBackgroundServices.Abstractions.Queues;
 
 public abstract class DurableQueue
 {

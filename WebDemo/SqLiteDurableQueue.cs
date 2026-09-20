@@ -1,6 +1,6 @@
 ﻿using Dapper;
 using Microsoft.Data.Sqlite;
-using ManagedBackgroundServices.Abstractions;
+using ManagedBackgroundServices.Abstractions.Queues;
 
 namespace WebDemo;
 

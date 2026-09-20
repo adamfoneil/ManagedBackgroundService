@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
-namespace ManagedBackgroundServices.Abstractions;
+namespace ManagedBackgroundServices.Abstractions.Queues;
 
 public interface IQueueConsumerPerformance
 {
@@ -9,20 +9,20 @@ public interface IQueueConsumerPerformance
     TimeSpan ConsumeRateSpan { get; }
 }
 
-public delegate Task QueueMessageHandler(object message, CancellationToken stoppingToken);
+public delegate Task QueueMessageHandler<T>(T message, CancellationToken stoppingToken) where T : notnull;
 
 public abstract class QueueConsumerBackgroundService(
     ILoggerFactory loggerFactory,
     DurableQueue persistentQueue) : ManagedBackgroundService(loggerFactory), IQueueConsumerPerformance
 {
     private readonly DurableQueue _persistentQueue = persistentQueue;
+    protected readonly MessageHandlerRegistry Registry = new();
 
     /// <summary>
-    /// Returns a registry mapping TypeName to message handler instances.
-    /// Key: TypeName (as stored in QueueMessage.TypeName)
-    /// Value: IMessageHandler implementation for that type
+    /// Override to register message handlers using Registry.With&lt;T&gt;().
+    /// Called during service initialization.
     /// </summary>
-    protected abstract Dictionary<string, QueueMessageHandler> MessageHandlers { get; }
+    protected abstract void RegisterHandlers();
 
     protected virtual async Task OnMessageFailedAsync(DurableQueue.QueueMessage queueMessage, object? messageObject, Exception exception)
     {
@@ -59,6 +59,8 @@ public abstract class QueueConsumerBackgroundService(
 
     protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
+        RegisterHandlers();
+
         while (!stoppingToken.IsCancellationRequested)
         {
             var messages = await _persistentQueue.DequeueAsync(DequeueBatchSize, stoppingToken);
@@ -75,12 +77,6 @@ public abstract class QueueConsumerBackgroundService(
 
                 try
                 {
-                    if (!MessageHandlers.TryGetValue(queueMessage.HandlerName, out var handler))
-                    {
-                        Logger.LogWarning("No handler registered for message type {TypeName}", queueMessage.TypeName);
-                        continue;
-                    }
-
                     msgObject = DeserializeMessage(queueMessage.TypeName, queueMessage.JsonData);
                     if (msgObject is null)
                     {
@@ -88,7 +84,13 @@ public abstract class QueueConsumerBackgroundService(
                         continue;
                     }
 
-                    await handler.Invoke(msgObject, stoppingToken);
+                    if (!Registry.TryGetHandler(queueMessage.HandlerName, msgObject, out var handler))
+                    {
+                        Logger.LogWarning("No handler registered for message type {TypeName}", queueMessage.TypeName);
+                        continue;
+                    }
+
+                    await (Task)handler!.DynamicInvoke(msgObject, stoppingToken)!;
                     _consumed++;
                     // todo: track avg wait time in queue?
                 }

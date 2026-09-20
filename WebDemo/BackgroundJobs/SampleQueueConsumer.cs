@@ -1,4 +1,4 @@
-﻿using ManagedBackgroundServices.Abstractions;
+﻿using ManagedBackgroundServices.Abstractions.Queues;
 
 namespace WebDemo.BackgroundJobs;
 
@@ -7,18 +7,14 @@ public record SampleMessage(string Content);
 public class SampleQueueConsumer(ILoggerFactory loggerFactory, DurableQueue persistentQueue) 
     : QueueConsumerBackgroundService(loggerFactory, persistentQueue)
 {
-    protected override Dictionary<string, QueueMessageHandler> MessageHandlers =>
-        new()
-        {
-            [nameof(SampleMessage)] = HandleSampleMessage
-        };
-
-    async Task HandleSampleMessage(object message, CancellationToken cancellationToken)
+    protected override void RegisterHandlers()
     {
-        if (message is SampleMessage sampleMessage)
-        {
-            Logger.LogInformation("Processing message: {message}", sampleMessage.Content);
-            await Task.Delay(Random.Shared.Next(2, 7) * 1000, cancellationToken);
-        }
+        Registry.With<SampleMessage>(nameof(SampleMessage), HandleSampleMessage);
+    }
+
+    async Task HandleSampleMessage(SampleMessage message, CancellationToken cancellationToken)
+    {
+        Logger.LogInformation("Processing message: {message}", message.Content);
+        await Task.Delay(Random.Shared.Next(2, 7) * 1000, cancellationToken);
     }
 }
