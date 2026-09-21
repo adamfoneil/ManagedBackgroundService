@@ -24,6 +24,11 @@ public class QueueConsumerBackgroundService<T>(
     private readonly DurableQueue _persistentQueue = persistentQueue;
     private readonly IPayloadBackgroundWorker<T> _handler = handler;
 
+    /// <summary>
+    /// Returns the handler class name for identification in dashboard and logging.
+    /// </summary>
+    public override string HandlerIdentifier => _handler.GetType().Name;
+
     protected virtual async Task OnMessageFailedAsync(DurableQueue.Message queueMessage, T? messageObject, Exception exception)
     {
         // do nothing by default
@@ -73,23 +78,26 @@ public class QueueConsumerBackgroundService<T>(
             {
                 T? msgObject = default;
 
-                try
+                using (Logger.BeginScope(new Dictionary<string, object> { { "HandlerName", HandlerIdentifier } }))
                 {
-                    msgObject = DeserializeMessage(queueMessage.TypeName, queueMessage.JsonData);
-                    if (msgObject is null)
+                    try
                     {
-                        Logger.LogWarning("Message json deserialized to null: {data}", queueMessage.JsonData);
-                        continue;
-                    }
+                        msgObject = DeserializeMessage(queueMessage.TypeName, queueMessage.JsonData);
+                        if (msgObject is null)
+                        {
+                            Logger.LogWarning("Message json deserialized to null: {data}", queueMessage.JsonData);
+                            continue;
+                        }
 
-                    Logger.LogDebug("Invoking handler with payload {payload}", queueMessage.JsonData);
-                    await _handler.ExecuteAsync(msgObject, stoppingToken);
-                    _consumed++;
-                }
-                catch (Exception exc)
-                {
-                    Logger.LogError(exc, "Error processing message type {TypeName}", queueMessage.TypeName);
-                    await OnMessageFailedAsync(queueMessage, msgObject, exc);
+                        Logger.LogDebug("Invoking handler with payload {payload}", queueMessage.JsonData);
+                        await _handler.ExecuteAsync(msgObject, stoppingToken);
+                        _consumed++;
+                    }
+                    catch (Exception exc)
+                    {
+                        Logger.LogError(exc, "Error processing message type {TypeName}", queueMessage.TypeName);
+                        await OnMessageFailedAsync(queueMessage, msgObject, exc);
+                    }
                 }
             }
 

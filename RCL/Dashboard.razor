@@ -7,7 +7,7 @@
 @inject IManagedBackgroundServiceProvider BackgroundServices
 @inject IInMemoryLogQuery LogQuery
 
-@if (_logsByCategory is null) return;
+@if (_logsByHandlerName is null) return;
 
 <table class="mbs-dashboard-table">
     <thead>
@@ -23,15 +23,14 @@
     <tbody>
         @foreach (var svc in BackgroundServices.Services)
         {
-            var serviceType = svc.GetType().Name;
-            var serviceCategory = svc.GetType().FullName!;
-            var isExpanded = _expandedServiceNames.Contains(serviceType);
+            var handlerIdentifier = svc.HandlerIdentifier;
+            var isExpanded = _expandedServiceNames.Contains(handlerIdentifier);
 
             <tr>
                 <td>
-                    <button class="mbs-btn mbs-expand-btn" @onclick="() => ToggleLogs(serviceType)">@(isExpanded ? "Hide" : "Show") logs</button>
+                    <button class="mbs-btn mbs-expand-btn" @onclick="() => ToggleLogs(handlerIdentifier)">@(isExpanded ? "Hide" : "Show") logs</button>
                 </td>
-                <td>@serviceType</td>
+                <td>@handlerIdentifier</td>
                 <td>
                     <span class="mbs-status-chip @GetStatusCssClass(svc.Status)">
                         <span class="mbs-status-icon" aria-hidden="true">@GetStatusIcon(svc.Status)</span>
@@ -60,7 +59,7 @@
                     {
                         <br />
                         <span class="small">
-                            @foreach (var err in _errorsByCategory[serviceCategory])
+                            @foreach (var err in _errorsByCategory[handlerIdentifier])
                             {
                                 <span class="me-1">@err.Level: @err.Count</span>
                             }
@@ -86,7 +85,7 @@
 
             @if (isExpanded)
             {
-                var logs = _logsByCategory[serviceCategory];                
+                var logs = _logsByHandlerName[handlerIdentifier];                
 
                 <tr class="mbs-log-row">
                     <td></td>
@@ -128,7 +127,7 @@
 
 @code {
     private readonly HashSet<string> _expandedServiceNames = [];
-    private ILookup<string, LogEntry>? _logsByCategory;
+    private ILookup<string?, LogEntry>? _logsByHandlerName;
     private ILookup<string, (LogLevel Level, int Count)>? _errorsByCategory;
     private bool _isLocalTime = false;
     private string TimeColumnHeading => _isLocalTime ? "Updated (Local)" : "Updated (UTC)";
@@ -156,7 +155,7 @@
             }
         }
 
-        _logsByCategory = LogQuery.GetLogsByCategory(maxPerCategory: MaxLogsPerCategory);
+        _logsByHandlerName = LogQuery.GetLogsByHandlerName(maxResults: MaxLogsPerCategory);
         _errorsByCategory = LogQuery.GetErrorsByCategory(minutesBack: ErrorsLookMinutesBack);
     }
 

@@ -29,6 +29,13 @@ public abstract class ManagedBackgroundService : BackgroundService
     }
 
     /// <summary>
+    /// Gets the handler identifier for logging and dashboard purposes.
+    /// Override to return the handler class name (e.g., "MyHandler", "SampleMessageHandler").
+    /// By default, returns the short name of the service class.
+    /// </summary>
+    public virtual string HandlerIdentifier => GetType().Name;
+
+    /// <summary>
     /// this is your custom logic for the background service
     /// </summary>
     protected abstract Task ExecuteInternalAsync(CancellationToken stoppingToken);
