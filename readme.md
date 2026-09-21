@@ -16,43 +16,102 @@ The problem with this is it's not clear what pattern to implement to give you a 
 
 That's where [ManagedBackgroundService](Abstractions/ManagedBackgroundService.cs) comes in. It's an abstract class just like the native BackgroundService. The work your service does goes in the `ExecuteInternalAsync` method. There are `Pause` and `Resume` methods that do what they sound like, along with a `Status` property that returns Running, Paused, or Crashed. If your `ExecuteInternalAsync` throws an exception, the service goes into a Paused state. A paused job can be resumed. If an exception occurs outside the inner `try` block, the job goes into a Crashed state. If that happens, it can't be resumed, and you must restart the host app.
 
-# Startup Configuration
-Add your BackgroundService instances to your app at startup using [ServiceExtensions](Abstractions/Infrastructure/ServiceExtensions.cs) like this:
+This library has two derived classes that are the focus of this library:
+- [QueueConsumerBackgroundService](Abstractions/Queues/QueueConsumerBackgroundService.cs)
+- [ScheduledBackgroundService](Abstractions/Scheduling/ScheduledBackgroundService.cs)
+
+# Using QueueConsumerBackgroundService
+
+[QueueConsumerBackgroundService](Abstractions/Queues/QueueConsumerBackgroundService.cs) is for processing messages from a durable queue. You need to:
+
+1. Implement a message type and handler. The handler implements `IPayloadBackgroundWorker<T>`:
 
 ```csharp
-services.AddManagedBackgroundService<your type>();
+public record SampleMessage(string Content);
+
+public class SampleMessageHandler(ILogger<SampleMessageHandler> logger) : IPayloadBackgroundWorker<SampleMessage>
+{
+    private readonly ILogger<SampleMessageHandler> _logger = logger;
+
+    public async Task ExecuteAsync(SampleMessage payload, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Processing message: {message}", payload.Content);
+        // Your business logic here
+        await Task.Delay(Random.Shared.Next(2, 7) * 1000, cancellationToken);
+    }
+}
 ```
 
-Add the optional [health check](Abstractions/Infrastructure/BackgroundServicesHealthCheck.cs):
+2. Implement a `PersistentQueue` abstraction for your storage mechanism (database, cloud queues, etc.). See [SqLiteDurableQueue](WebDemo/SqLiteDurableQueue.cs) and [DurableQueue](Abstractions/Queues/DurableQueue.cs) for reference implementations.
+
+3. Register the queue consumer at startup in `Program.cs`:
 
 ```csharp
-services.AddHealthChecks().AddCheck<BackgroundServicesHealthCheck>("Background Services");
+var queue = new SqLiteDurableQueue("queue.db");
+builder.Services
+    .AddQueueConsumer<SampleMessage, SampleMessageHandler>(queue);
 ```
-Note that health checks are a [bigger topic](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0) -- there are different ways to fine tune and serve health checks that are outside the scope of this project.
 
-When using `QueueConsumerBackgroundService` add `PersistentQueue` singleton at startup like this. This is an example from the [demo project](WebDemo/Program.cs).
+4. Enqueue messages in your application code:
 
 ```csharp
-builder.Services.AddDurableQueue(new SqLiteDurableQueue("queue.db"));
+@inject DurableQueue Queue
+
+<button @onclick="Enqueue">Enqueue</button>
+
+@code {
+    private async Task Enqueue()
+    {        
+        await Queue.EnqueueAsync(new SampleMessage("Hello world"), "current-user");
+    }
+}
 ```
 
-# Derived Classes
+**Key Features:**
+- Batch dequeuing with configurable batch size
+- Automatic deserialization of messages based on stored type information
+- Error handling via the `OnMessageFailedAsync` hook for custom retry or dead-letter logic
+- Performance tracking via `IQueueConsumerPerformance` (consume rate per configurable time window)
+- Configurable delays: `EmptyQueueDelay` (how long to wait when queue is empty) and `ProcessingDelay` (delay between batches)
+- Database-agnostic design: implement queue dequeue logic using platform-specific best practices (e.g., SQL Server's `DELETE ... OUTPUT`, Postgres's `FOR UPDATE SKIP LOCKED`, etc.)
 
-`ManagedBackgroundService` powers these two derived classes:
+# Using ScheduledBackgroundService
 
-- [QueueConsumerBackgroundService](Abstractions/Queues/QueueConsumerBackgroundService.cs). You must implement a `PersistentQueue` abstraction that handles your underlying storage mechanism (relational database, cloud queues, etc.). See [SqLiteDurableQueue](WebDemo/SqLiteDurableQueue.cs) for example and [DurableQueue](Abstractions/Queues/DurableQueue.cs) abstract class. The queue consumer uses a message handler registry pattern where you map message type names to handler delegates. Key features include:
-    - Batch dequeuing with configurable batch size
-    - Automatic deserialization of messages based on stored type information
-    - Error handling via the `OnMessageFailedAsync` hook for custom retry or dead-letter logic
-    - Performance tracking via `IQueueConsumerPerformance` (consume rate per configurable time window)
-    - Configurable delays: `EmptyQueueDelay` (how long to wait when queue is empty) and `ProcessingDelay` (delay between batches)
-    - Database-agnostic design: implement queue dequeue logic using platform-specific best practices (e.g., SQL Server's `DELETE ... OUTPUT`, Postgres's `FOR UPDATE SKIP LOCKED`, etc.)
-    
-See example [SampleQueueConsumer](WebDemo/BackgroundJobs/SampleQueueConsumer.cs) along with the enqueue example in [Home.razor](WebDemo/Components/Pages/Home.razor).
+[ScheduledBackgroundService](Abstractions/ScheduledBackgroundService.cs) is for running jobs on a schedule. Create a class that implements `IBackgroundWorker`:
 
-- [ScheduledBackgroundService](Abstractions/ScheduledBackgroundService.cs) is for running scheduled jobs. You must implement the `ExecuteScheduledAsync` and `GetNextRunTime` methods. You can use something like [Cronos](https://github.com/HangfireIO/Cronos) with standard cron expressions to do this. One reason I made this class though is I find cron expressions hard to use, so I introduced my own feature [RecurrencePattern](Abstractions/Infrastructure/RecurrencePattern.cs) which is my alternative to cron. See [tests](Testing/RecurrencePatternTests.cs) to see how to use this. In essence, you write expressions like this:
-    - `d[mon..fri] t[9:30am, 3:30pm] tz:America/New_York` = Monday through Friday at 9:30am and 3:30pm, eastern time
-    - `*90min b[7:30, 15:30]` = every 90 minutes between 7:30am and 3:30pm UTC
+```csharp
+public class DbCleanupJob(ILogger<DbCleanupJob> logger) : IBackgroundWorker
+{
+    private readonly ILogger<DbCleanupJob> _logger = logger;
+
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Running database cleanup job");
+        // Your business logic here
+        await Task.Delay(100, cancellationToken);
+    }
+}
+```
+
+Register your scheduled jobs at startup using `RecurrencePattern` expressions:
+
+```csharp
+builder.Services
+    .AddScheduledJob<DbCleanupJob>("*1d t[2:00am]")
+    .AddScheduledJob<ReindexJob>("d[mon..fri] t[9:30am, 3:30pm]")
+    .AddScheduledJob<WeeklyReportsJob>("d[sat]")
+    .AddScheduledJob<FrequentJob>("*5s");
+```
+
+**RecurrencePattern Examples:**
+- `*1d t[2:00am]` = Daily at 2:00 AM (UTC)
+- `d[mon..fri] t[9:30am, 3:30pm]` = Monday through Friday at 9:30 AM and 3:30 PM
+- `d[sat]` = Every Saturday at midnight (UTC)
+- `*5s` = Every 5 seconds
+- `*90min b[7:30, 15:30]` = Every 90 minutes between 7:30 AM and 3:30 PM UTC
+- `d[mon..fri] t[9:30am, 3:30pm] tz:America/New_York` = Monday through Friday at 9:30 AM and 3:30 PM, eastern time
+
+For more details on `RecurrencePattern` syntax, see the [tests](Testing/RecurrencePatternTests.cs).
 
 # Logging Features
 `ManagedBackgroundService` requires an `ILoggerFactory`. Do not inject your own `ILogger<T>` type. This way, your derived classes will automatically get logs categorized for the derived type name rather than the base class.
