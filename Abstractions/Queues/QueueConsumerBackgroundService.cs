@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using ManagedBackgroundServices.Abstractions.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace ManagedBackgroundServices.Abstractions.Queues;

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using ManagedBackgroundServices.Abstractions.Infrastructure;
+using Microsoft.Extensions.Logging;
 
 namespace ManagedBackgroundServices.Abstractions.Scheduling;
 
