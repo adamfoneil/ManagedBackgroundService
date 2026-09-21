@@ -3,16 +3,10 @@ using Microsoft.Extensions.Logging;
 
 namespace ConsoleDemo;
 
-public class DoWorkJob : IBackgroundWorker
+public class DoWorkJob(ILogger<DoWorkJob> logger) : IBackgroundWorker
 {
-    private readonly ILogger<DoWorkJob> _logger;
-    private readonly TimeProvider _timeProvider;
-
-    public DoWorkJob(ILogger<DoWorkJob> logger)
-    {
-        _logger = logger;
-        _timeProvider = TimeProvider.System;
-    }
+    private readonly ILogger<DoWorkJob> _logger = logger;
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
@@ -21,16 +15,10 @@ public class DoWorkJob : IBackgroundWorker
     }
 }
 
-public class AnotherTaskJob : IBackgroundWorker
+public class AnotherTaskJob(ILogger<AnotherTaskJob> logger) : IBackgroundWorker
 {
-    private readonly ILogger<AnotherTaskJob> _logger;
-    private readonly TimeProvider _timeProvider;
-
-    public AnotherTaskJob(ILogger<AnotherTaskJob> logger)
-    {
-        _logger = logger;
-        _timeProvider = TimeProvider.System;
-    }
+    private readonly ILogger<AnotherTaskJob> _logger = logger;
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
