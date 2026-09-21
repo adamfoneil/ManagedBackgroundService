@@ -10,35 +10,34 @@ public interface IQueueConsumerPerformance
     TimeSpan ConsumeRateSpan { get; }
 }
 
-public delegate Task QueueMessageHandler<T>(DurableQueue.Message rawMessage, T message, CancellationToken stoppingToken) where T : notnull;
-
-public abstract class QueueConsumerBackgroundService(
+/// <summary>
+/// Single-handler queue consumer background service.
+/// Handles one message type using IPayloadBackgroundWorker&lt;T&gt;.
+/// </summary>
+/// <typeparam name="T">The message type this consumer handles</typeparam>
+public class QueueConsumerBackgroundService<T>(
     ILoggerFactory loggerFactory,
-    DurableQueue persistentQueue) : ManagedBackgroundService(loggerFactory), IQueueConsumerPerformance
+    DurableQueue persistentQueue,
+    IPayloadBackgroundWorker<T> handler) : ManagedBackgroundService(loggerFactory), IQueueConsumerPerformance
+    where T : notnull
 {
     private readonly DurableQueue _persistentQueue = persistentQueue;
-    protected readonly MessageHandlerRegistry Registry = new();
+    private readonly IPayloadBackgroundWorker<T> _handler = handler;
 
-    /// <summary>
-    /// Override to register message handlers using Registry.With&lt;T&gt;().
-    /// Called during service initialization.
-    /// </summary>
-    protected abstract void RegisterHandlers();
-
-    protected virtual async Task OnMessageFailedAsync(DurableQueue.Message queueMessage, object? messageObject, Exception exception)
+    protected virtual async Task OnMessageFailedAsync(DurableQueue.Message queueMessage, T? messageObject, Exception exception)
     {
         // do nothing by default
         await Task.CompletedTask;
     }
-    
+
     protected virtual TimeSpan EmptyQueueDelay => TimeSpan.FromSeconds(5);
     protected virtual TimeSpan ProcessingDelay => TimeSpan.Zero;
-    protected virtual int DequeueBatchSize { get => 3; }
-    public virtual TimeSpan ConsumeRateSpan { get => TimeSpan.FromMinutes(5); }
+    protected virtual int DequeueBatchSize => 3;
+    public virtual TimeSpan ConsumeRateSpan => TimeSpan.FromMinutes(5);
 
     private int _consumed = 0;
     private DateTime _windowStart = DateTime.UtcNow;
-    
+
     public decimal ConsumeRate
     {
         get
@@ -60,8 +59,6 @@ public abstract class QueueConsumerBackgroundService(
 
     protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
-        RegisterHandlers();
-
         while (!stoppingToken.IsCancellationRequested)
         {
             var messages = await _persistentQueue.DequeueAsync(DequeueBatchSize, stoppingToken);
@@ -74,7 +71,7 @@ public abstract class QueueConsumerBackgroundService(
 
             foreach (var queueMessage in messages)
             {
-                object? msgObject = null;
+                T? msgObject = default;
 
                 try
                 {
@@ -85,19 +82,9 @@ public abstract class QueueConsumerBackgroundService(
                         continue;
                     }
 
-                    if (!Registry.TryGetHandler(queueMessage.HandlerName, msgObject, out var handler))
-                    {
-                        Logger.LogWarning("No handler registered for message type {TypeName}", queueMessage.TypeName);
-                        continue;
-                    }
-
-                    using (Logger.BeginScope(new Dictionary<string, object> { { "HandlerName", queueMessage.HandlerName } }))
-                    {
-                        Logger.LogDebug("Invoking handler {handler} with payload {payload}", queueMessage.HandlerName, queueMessage.JsonData);
-                        await (Task)handler!.DynamicInvoke(queueMessage, msgObject, stoppingToken)!;
-                        _consumed++;
-                    }
-                    // todo: track avg wait time in queue?
+                    Logger.LogDebug("Invoking handler with payload {payload}", queueMessage.JsonData);
+                    await _handler.ExecuteAsync(msgObject, stoppingToken);
+                    _consumed++;
                 }
                 catch (Exception exc)
                 {
@@ -114,18 +101,18 @@ public abstract class QueueConsumerBackgroundService(
     /// Deserializes JsonData to the appropriate type based on TypeName.
     /// Override to customize type resolution logic (e.g., namespace handling).
     /// </summary>
-    protected virtual object? DeserializeMessage(string typeName, string jsonData)
+    protected virtual T? DeserializeMessage(string typeName, string jsonData)
     {
         var messageType = Type.GetType(typeName);
         if (messageType == null)
         {
             Logger.LogWarning("Could not resolve type {TypeName}", typeName);
-            return null;
+            return default;
         }
 
         try
         {
-            return JsonSerializer.Deserialize(jsonData, messageType);
+            return (T?)JsonSerializer.Deserialize(jsonData, messageType);
         }
         catch (Exception exc)
         {

@@ -1,26 +1,40 @@
-using ManagedBackgroundServices.Abstractions.Scheduling;
+using ManagedBackgroundServices.Abstractions.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace ConsoleDemo;
 
-public class SampleScheduledJob(ILoggerFactory loggerFactory) 
-    : ScheduledBackgroundService(loggerFactory, TimeProvider.System)
+public class DoWorkJob : IBackgroundWorker
 {
-    protected override void RegisterHandlers()
+    private readonly ILogger<DoWorkJob> _logger;
+    private readonly TimeProvider _timeProvider;
+
+    public DoWorkJob(ILogger<DoWorkJob> logger)
     {
-        Registry.Add("One Task", DoWork, "*4sec");
-        Registry.Add("Another Task", AnotherTask, "*6sec");
+        _logger = logger;
+        _timeProvider = TimeProvider.System;
     }
 
-    private async Task DoWork(CancellationToken cancellationToken)
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        Logger.LogInformation("Scheduled work at {now}", TimeProvider.GetLocalNow());
+        _logger.LogInformation("Scheduled work at {now}", _timeProvider.GetLocalNow());
         await Task.CompletedTask;
     }
+}
 
-    private async Task AnotherTask(CancellationToken cancellationToken)
+public class AnotherTaskJob : IBackgroundWorker
+{
+    private readonly ILogger<AnotherTaskJob> _logger;
+    private readonly TimeProvider _timeProvider;
+
+    public AnotherTaskJob(ILogger<AnotherTaskJob> logger)
     {
-        Logger.LogInformation("I'm doing another task as of {now}", TimeProvider.GetLocalNow());
+        _logger = logger;
+        _timeProvider = TimeProvider.System;
+    }
+
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("I'm doing another task as of {now}", _timeProvider.GetLocalNow());
         await Task.CompletedTask;
     }
 }

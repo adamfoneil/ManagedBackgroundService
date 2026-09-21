@@ -1,38 +1,36 @@
-using ManagedBackgroundServices.Abstractions.Scheduling;
+using ManagedBackgroundServices.Abstractions.Infrastructure;
 
 namespace WebDemo.BackgroundJobs;
 
-public class MyScheduledJobs(ILoggerFactory loggerFactory)
-    : ScheduledBackgroundService(loggerFactory, TimeProvider.System)
+public class DbCleanupJob(ILogger<DbCleanupJob> logger) : IBackgroundWorker
 {
-    protected override void RegisterHandlers()
-    {
-        Registry.Add("Database cleanup", DbCleanup, "*1d t[2:00am]");
-        Registry.Add("Reindex", Reindex, "d[mon..fri] t[9:30am, 3:30pm]");
-        Registry.Add("End of Week Reports", WeeklyReports, "d[sat]");
-    }
+    private readonly ILogger<DbCleanupJob> _logger = logger;
 
-    public async Task DbCleanup(CancellationToken cancellationToken)
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        // Simulate database cleanup
+        _logger.LogInformation("Running database cleanup job");
         await Task.Delay(100, cancellationToken);
     }
+}
 
-    public async Task Reindex(CancellationToken cancellationToken)
+public class ReindexJob(ILogger<ReindexJob> logger) : IBackgroundWorker
+{
+    private readonly ILogger<ReindexJob> _logger = logger;
+
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        // Simulate reindexing
+        _logger.LogInformation("Running reindex job");
         await Task.Delay(150, cancellationToken);
     }
+}
 
-    public async Task WeeklyReports(CancellationToken cancellationToken)
+public class WeeklyReportsJob(ILogger<WeeklyReportsJob> logger) : IBackgroundWorker
+{
+    private readonly ILogger<WeeklyReportsJob> _logger = logger;
+
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        // Simulate weekly reports generation
+        _logger.LogInformation("Running weekly reports job");
         await Task.Delay(200, cancellationToken);
-    }
-
-    protected override async Task OnHandlerFailedAsync(string handlerName, Exception exception)
-    {
-        Logger.LogWarning("Handler '{HandlerName}' failed: {Message}", handlerName, exception.Message);
-        await Task.CompletedTask;
     }
 }

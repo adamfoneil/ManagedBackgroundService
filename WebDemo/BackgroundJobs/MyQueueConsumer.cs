@@ -1,20 +1,16 @@
-﻿using ManagedBackgroundServices.Abstractions.Queues;
+﻿using ManagedBackgroundServices.Abstractions.Infrastructure;
 
 namespace WebDemo.BackgroundJobs;
 
 public record SampleMessage(string Content);
 
-public class MyQueueConsumer(ILoggerFactory loggerFactory, DurableQueue durableQueue) 
-    : QueueConsumerBackgroundService(loggerFactory, durableQueue)
+public class SampleMessageHandler(ILogger<SampleMessageHandler> logger) : IPayloadBackgroundWorker<SampleMessage>
 {
-    protected override void RegisterHandlers()
-    {
-        Registry.Add<SampleMessage>(nameof(SampleMessage), HandleSampleMessage);
-    }
+    private readonly ILogger<SampleMessageHandler> _logger = logger;
 
-    async Task HandleSampleMessage(DurableQueue.Message rawMessage, SampleMessage message, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(SampleMessage payload, CancellationToken cancellationToken)
     {
-        Logger.LogInformation("Processing from {user} message: {message}", rawMessage.UserName, message.Content);
+        _logger.LogInformation("Processing message: {message}", payload.Content);
         await Task.Delay(Random.Shared.Next(2, 7) * 1000, cancellationToken);
     }
 }

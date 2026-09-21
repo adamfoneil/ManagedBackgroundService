@@ -44,14 +44,10 @@
                         <span class="small">@queueSvc.ConsumeRate.ToString("n1") / @TimeSpanExpression(queueSvc.ConsumeRateSpan)</span>
                     }
 
-                    @if (svc is ScheduledBackgroundService scheduledSvc && scheduledSvc.Registry.GetHandlers().Any())
+                    @if (svc is ScheduledBackgroundService scheduledSvc)
                     {
-                        var nextWakeUp = scheduledSvc.Registry.GetNextWakeUpTime(DateTimeOffset.UtcNow);
-                        if (nextWakeUp.HasValue)
-                        {
-                            <br />
-                            <span class="small">next scheduled job <strong>@GetNextRunExpression(nextWakeUp.Value)</strong> at @ConvertToLocalTime(nextWakeUp.Value.DateTime).ToString("yyyy-MM-dd HH:mm:ss")</span>
-                        }
+                        <br />
+                        <span class="small">scheduled job</span>
                     }
 
                     @if (svc is IStatusMessage status)

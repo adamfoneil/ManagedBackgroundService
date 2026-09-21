@@ -24,8 +24,9 @@ internal class Program
             {
                 services.AddHealthChecks().AddCheck<BackgroundServicesHealthCheck>("Background Services");
 
-                // Handlers are registered in SampleScheduledJob.RegisterHandlers()
-                services.AddScheduledJobs<SampleScheduledJob>();
+                services
+                    .AddScheduledJob<DoWorkJob>("*4sec")
+                    .AddScheduledJob<AnotherTaskJob>("*6sec");
             })
             .Build();
 

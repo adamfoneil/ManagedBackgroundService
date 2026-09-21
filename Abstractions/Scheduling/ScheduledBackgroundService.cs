@@ -3,24 +3,26 @@ using Microsoft.Extensions.Logging;
 
 namespace ManagedBackgroundServices.Abstractions.Scheduling;
 
-public abstract class ScheduledBackgroundService(
+/// <summary>
+/// Single-job scheduled background service.
+/// Runs one job on a recurrence pattern using IBackgroundWorker.
+/// </summary>
+public class ScheduledBackgroundService(
     ILoggerFactory loggerFactory,
-    TimeProvider timeProvider) : ManagedBackgroundService(loggerFactory)
+    TimeProvider timeProvider,
+    RecurrencePattern pattern,
+    IBackgroundWorker worker) : ManagedBackgroundService(loggerFactory)
 {
-    protected readonly TimeProvider TimeProvider = timeProvider;
-    public readonly ScheduledJobHandlerRegistry Registry = new();
+    private readonly TimeProvider _timeProvider = timeProvider;
+    private readonly RecurrencePattern _pattern = pattern;
+    private readonly IBackgroundWorker _worker = worker;
+    private DateTimeOffset _nextRunTime = DateTimeOffset.MinValue;
 
     /// <summary>
-    /// Override to register scheduled job handlers using Registry.Add().
-    /// Called during service initialization before execution begins.
-    /// </summary>
-    protected abstract void RegisterHandlers();    
-
-    /// <summary>
-    /// Override to handle exceptions thrown by handlers.
+    /// Override to handle exceptions thrown by the worker.
     /// Note that error has already been logged, so no need to log again.
     /// </summary>
-    protected virtual async Task OnHandlerFailedAsync(string handlerName, Exception exception)
+    protected virtual async Task OnHandlerFailedAsync(Exception exception)
     {
         // do nothing by default
         await Task.CompletedTask;
@@ -28,63 +30,39 @@ public abstract class ScheduledBackgroundService(
 
     protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
-        // Register handlers on first execution
-        RegisterHandlers();
-
-        // Initialize next run times for all handlers
-        var now = TimeProvider.GetUtcNow();
-        foreach (var handler in Registry.GetHandlers())
-        {
-            handler.NextRunTime = handler.Pattern.GetNextOccurrence(now);
-        }
+        // Initialize next run time
+        var now = _timeProvider.GetUtcNow();
+        _nextRunTime = _pattern.GetNextOccurrence(now);
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            now = TimeProvider.GetUtcNow();
+            now = _timeProvider.GetUtcNow();
 
-            // Find the next handler(s) that should run
-            var nextHandler = Registry.GetNextHandlerToRun(now);
-
-            if (nextHandler is not null)
+            if (_nextRunTime <= now)
             {
-                using (Logger.BeginScope(new Dictionary<string, object> { { "HandlerName", nextHandler.Name } }))
+                try
                 {
-                    // Execute the handler
-                    try
-                    {
-                        await nextHandler.Handler(stoppingToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogError(ex, "Error executing scheduled handler '{HandlerName}'", nextHandler.Name);
-                        await OnHandlerFailedAsync(nextHandler.Name, ex);
-                    }
-
-                    // Update next run time for this handler
-                    nextHandler.NextRunTime = nextHandler.Pattern.GetNextOccurrence(now);
+                    Logger.LogDebug("Executing scheduled job");
+                    await _worker.ExecuteAsync(stoppingToken);
                 }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error executing scheduled job");
+                    await OnHandlerFailedAsync(ex);
+                }
+
+                _nextRunTime = _pattern.GetNextOccurrence(now);
             }
             else
             {
-                // Get the next wake-up time
-                var nextWakeUp = Registry.GetNextWakeUpTime(now);
-                if (nextWakeUp is null)
+                var delay = _nextRunTime - now;
+                try
                 {
-                    // No handlers registered, delay for a bit
-                    await Task.Delay(TimeSpan.FromSeconds(5), TimeProvider, stoppingToken);
+                    await Task.Delay(delay, _timeProvider, stoppingToken);
                 }
-                else if (nextWakeUp.Value > now)
+                catch (OperationCanceledException)
                 {
-                    // Sleep until the next handler should run
-                    var delay = nextWakeUp.Value - now;
-                    try
-                    {
-                        await Task.Delay(delay, TimeProvider, stoppingToken);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Expected when stopping
-                    }
+                    // Expected when stopping
                 }
             }
         }

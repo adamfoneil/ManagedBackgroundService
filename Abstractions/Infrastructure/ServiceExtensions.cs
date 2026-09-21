@@ -12,62 +12,68 @@ public static class ServiceExtensions
     private const int DefaultInMemoryLogCapacity = 250;
 
     /// <summary>
-    /// Registers a queue consumer background service with a DurableQueue instance.
-    /// The service will run in the background and can be injected where needed.
+    /// Registers a queue consumer for a specific message type.
+    /// Can be called multiple times to register multiple queue consumers for different message types.
     /// </summary>
-    public static void AddQueueConsumer<T>(this IServiceCollection services, DurableQueue queue) where T : QueueConsumerBackgroundService
+    /// <typeparam name="TMessage">The message type this consumer handles</typeparam>
+    /// <typeparam name="TWorker">The IPayloadBackgroundWorker implementation</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <param name="queue">The durable queue instance</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddQueueConsumer<TMessage, TWorker>(
+        this IServiceCollection services, 
+        DurableQueue queue)
+        where TMessage : notnull
+        where TWorker : class, IPayloadBackgroundWorker<TMessage>
     {
-        if (queue is null) throw new ArgumentNullException(nameof(queue));
+        ArgumentNullException.ThrowIfNull(queue);
+
         AddQueueInfrastructure(services, queue);
-        services.AddSingleton<T>();
-        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<T>());
-        services.AddHostedService(sp => sp.GetRequiredService<T>());
+        services.AddSingleton<TWorker>();
+        services.AddSingleton<QueueConsumerBackgroundService<TMessage>>(sp =>
+            new QueueConsumerBackgroundService<TMessage>(
+                sp.GetRequiredService<ILoggerFactory>(),
+                queue,
+                sp.GetRequiredService<TWorker>()));
+        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
+        services.AddHostedService(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
+
+        return services;
     }
 
     /// <summary>
-    /// Registers a queue consumer background service with a DurableQueue factory.
-    /// The service will run in the background and can be injected where needed.
+    /// Registers a queue consumer for a specific message type with a DurableQueue factory.
+    /// Can be called multiple times to register multiple queue consumers for different message types.
     /// </summary>
-    public static void AddQueueConsumer<T>(this IServiceCollection services, Func<IServiceProvider, DurableQueue> queueFactory) where T : QueueConsumerBackgroundService
+    /// <typeparam name="TMessage">The message type this consumer handles</typeparam>
+    /// <typeparam name="TWorker">The IPayloadBackgroundWorker implementation</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <param name="queueFactory">Factory function to create the durable queue</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddQueueConsumer<TMessage, TWorker>(
+        this IServiceCollection services,
+        Func<IServiceProvider, DurableQueue> queueFactory)
+        where TMessage : notnull
+        where TWorker : class, IPayloadBackgroundWorker<TMessage>
     {
-        if (queueFactory is null) throw new ArgumentNullException(nameof(queueFactory));
+        ArgumentNullException.ThrowIfNull(queueFactory);
+
         AddQueueInfrastructure(services, queueFactory);
-        services.AddSingleton<T>();
-        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<T>());
-        services.AddHostedService(sp => sp.GetRequiredService<T>());
-    }
+        services.AddSingleton<TWorker>();
+        services.AddSingleton<QueueConsumerBackgroundService<TMessage>>(sp =>
+            new QueueConsumerBackgroundService<TMessage>(
+                sp.GetRequiredService<ILoggerFactory>(),
+                queueFactory(sp),
+                sp.GetRequiredService<TWorker>()));
+        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
+        services.AddHostedService(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
 
-    /// <summary>
-    /// Registers a queue consumer background service with a custom factory and a DurableQueue instance.
-    /// The service will run in the background and can be injected where needed.
-    /// </summary>
-    public static void AddQueueConsumer<T>(this IServiceCollection services, DurableQueue queue, Func<IServiceProvider, T> consumerFactory) where T : QueueConsumerBackgroundService
-    {
-        if (queue is null) throw new ArgumentNullException(nameof(queue));
-        if (consumerFactory is null) throw new ArgumentNullException(nameof(consumerFactory));
-        AddQueueInfrastructure(services, queue);
-        services.AddSingleton(consumerFactory);
-        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<T>());
-        services.AddHostedService(sp => sp.GetRequiredService<T>());
-    }
-
-    /// <summary>
-    /// Registers a queue consumer background service with both a DurableQueue factory and a consumer factory.
-    /// The service will run in the background and can be injected where needed.
-    /// </summary>
-    public static void AddQueueConsumer<T>(this IServiceCollection services, Func<IServiceProvider, DurableQueue> queueFactory, Func<IServiceProvider, T> consumerFactory) where T : QueueConsumerBackgroundService
-    {
-        if (queueFactory is null) throw new ArgumentNullException(nameof(queueFactory));
-        if (consumerFactory is null) throw new ArgumentNullException(nameof(consumerFactory));
-        AddQueueInfrastructure(services, queueFactory);
-        services.AddSingleton(consumerFactory);
-        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<T>());
-        services.AddHostedService(sp => sp.GetRequiredService<T>());
+        return services;
     }
 
     private static void AddQueueInfrastructure(IServiceCollection services, DurableQueue queue)
     {
-        services.AddSingleton(queue);        
+        services.AddSingleton(queue);
         AddManagedBackgroundServiceInfrastructure(services);
     }
 
@@ -78,27 +84,71 @@ public static class ServiceExtensions
     }
 
     /// <summary>
-    /// Registers a scheduled job handler that executes jobs based on recurrence patterns.
-    /// The service will run in the background and can be injected where needed.
+    /// Registers a scheduled job that runs on a recurrence pattern.
+    /// Can be called multiple times to register multiple scheduled jobs with different patterns.
     /// </summary>
-    public static void AddScheduledJobs<T>(this IServiceCollection services) where T : ScheduledBackgroundService
+    /// <typeparam name="TWorker">The IBackgroundWorker implementation</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <param name="patternString">The recurrence pattern string (parsed via RecurrencePattern.Parse)</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddScheduledJob<TWorker>(
+        this IServiceCollection services,
+        string patternString)
+        where TWorker : class, IBackgroundWorker
     {
+        if (string.IsNullOrWhiteSpace(patternString))
+            throw new ArgumentException("Pattern string cannot be null or empty.", nameof(patternString));
+
+        var pattern = RecurrencePattern.Parse(patternString);
+
         AddManagedBackgroundServiceInfrastructure(services);
-        services.AddSingleton<T>();
-        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<T>());
-        services.AddHostedService(sp => sp.GetRequiredService<T>());
+        services.AddSingleton<TWorker>();
+        services.AddSingleton<ScheduledBackgroundService>(sp =>
+            new ScheduledBackgroundService(
+                sp.GetRequiredService<ILoggerFactory>(),
+                TimeProvider.System,
+                pattern,
+                sp.GetRequiredService<TWorker>()));
+        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<ScheduledBackgroundService>());
+        services.AddHostedService(sp => sp.GetRequiredService<ScheduledBackgroundService>());
+
+        return services;
     }
 
     /// <summary>
-    /// Registers a scheduled job handler with a custom factory.
-    /// The service will run in the background and can be injected where needed.
+    /// Registers a scheduled job that runs on a recurrence pattern with a custom TimeProvider.
+    /// Can be called multiple times to register multiple scheduled jobs with different patterns.
     /// </summary>
-    public static void AddScheduledJobs<T>(this IServiceCollection services, Func<IServiceProvider, T> factory) where T : ScheduledBackgroundService
+    /// <typeparam name="TWorker">The IBackgroundWorker implementation</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <param name="patternString">The recurrence pattern string (parsed via RecurrencePattern.Parse)</param>
+    /// <param name="timeProvider">The time provider to use for scheduling</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddScheduledJob<TWorker>(
+        this IServiceCollection services,
+        string patternString,
+        TimeProvider timeProvider)
+        where TWorker : class, IBackgroundWorker
     {
+        if (string.IsNullOrWhiteSpace(patternString))
+            throw new ArgumentException("Pattern string cannot be null or empty.", nameof(patternString));
+        if (timeProvider is null)
+            throw new ArgumentNullException(nameof(timeProvider));
+
+        var pattern = RecurrencePattern.Parse(patternString);
+
         AddManagedBackgroundServiceInfrastructure(services);
-        services.AddSingleton(factory);
-        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<T>());
-        services.AddHostedService(sp => sp.GetRequiredService<T>());
+        services.AddSingleton<TWorker>();
+        services.AddSingleton<ScheduledBackgroundService>(sp =>
+            new ScheduledBackgroundService(
+                sp.GetRequiredService<ILoggerFactory>(),
+                timeProvider,
+                pattern,
+                sp.GetRequiredService<TWorker>()));
+        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<ScheduledBackgroundService>());
+        services.AddHostedService(sp => sp.GetRequiredService<ScheduledBackgroundService>());
+
+        return services;
     }
 
     public static void AddInMemoryLogger(this IServiceCollection services, int maxCapacity = DefaultInMemoryLogCapacity)
