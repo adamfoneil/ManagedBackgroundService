@@ -52,7 +52,7 @@ public class SqLiteDurableQueue : DurableQueue
             });
     }
 
-    protected override async Task<IEnumerable<Message>> DequeueMessagesAsync(int batchSize, string machineName, CancellationToken stoppingToken)
+    protected override async Task<IEnumerable<Message>> DequeueMessagesAsync(string handlerName, int batchSize, string machineName, CancellationToken stoppingToken)
     {
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
@@ -65,10 +65,10 @@ public class SqLiteDurableQueue : DurableQueue
             var messages = await connection.QueryAsync<(long id, string timestamp, string type_name, string handler_name, string machine_name, string user_name, string json_data)>($@"
                         SELECT id, timestamp, type_name, handler_name, machine_name, user_name, json_data 
                         FROM {_tableName}
-                        WHERE processed = 0 AND machine_name = @MachineName
+                        WHERE processed = 0 AND machine_name = @MachineName AND handler_name = @HandlerName
                         ORDER BY id ASC
                         LIMIT @BatchSize",
-                    new { BatchSize = batchSize, MachineName = machineName },
+                    new { BatchSize = batchSize, MachineName = machineName, HandlerName = handlerName },
                     transaction: transaction);
 
             if (messages.Any())
