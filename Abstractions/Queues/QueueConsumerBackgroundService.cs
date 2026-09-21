@@ -61,7 +61,7 @@ public class QueueConsumerBackgroundService<T>(
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var messages = await _persistentQueue.DequeueAsync(DequeueBatchSize, stoppingToken);
+            var messages = await _persistentQueue.DequeueAsync(typeof(T).Name, DequeueBatchSize, stoppingToken);
 
             if (!messages.Any())
             {

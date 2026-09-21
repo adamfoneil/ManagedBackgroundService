@@ -3,6 +3,7 @@ using ManagedBackgroundServices.Abstractions.Queues;
 using ManagedBackgroundServices.Abstractions.Scheduling;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace ManagedBackgroundServices.Abstractions.Infrastructure;
@@ -103,14 +104,12 @@ public static class ServiceExtensions
 
         AddManagedBackgroundServiceInfrastructure(services);
         services.AddSingleton<TWorker>();
-        services.AddSingleton<ScheduledBackgroundService>(sp =>
+        services.AddSingleton<ManagedBackgroundService>(sp =>
             new ScheduledBackgroundService(
                 sp.GetRequiredService<ILoggerFactory>(),
                 TimeProvider.System,
                 pattern,
                 sp.GetRequiredService<TWorker>()));
-        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<ScheduledBackgroundService>());
-        services.AddHostedService(sp => sp.GetRequiredService<ScheduledBackgroundService>());
 
         return services;
     }
@@ -139,14 +138,12 @@ public static class ServiceExtensions
 
         AddManagedBackgroundServiceInfrastructure(services);
         services.AddSingleton<TWorker>();
-        services.AddSingleton<ScheduledBackgroundService>(sp =>
+        services.AddSingleton<ManagedBackgroundService>(sp =>
             new ScheduledBackgroundService(
                 sp.GetRequiredService<ILoggerFactory>(),
                 timeProvider,
                 pattern,
                 sp.GetRequiredService<TWorker>()));
-        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<ScheduledBackgroundService>());
-        services.AddHostedService(sp => sp.GetRequiredService<ScheduledBackgroundService>());
 
         return services;
     }
@@ -161,6 +158,14 @@ public static class ServiceExtensions
     private static void AddManagedBackgroundServiceInfrastructure(IServiceCollection services)
     {
         services.TryAddSingleton<IManagedBackgroundServiceProvider, ManagedBackgroundServiceProvider>();
+
+        // Only register the host once to avoid duplicates
+        var hasHost = services.Any(x => x.ServiceType == typeof(ManagedBackgroundServicesHost));
+        if (!hasHost)
+        {
+            services.AddHostedService<ManagedBackgroundServicesHost>();
+        }
+
         AddInMemoryLoggerInfrastructure(services, DefaultInMemoryLogCapacity);
     }
 
@@ -181,5 +186,30 @@ public static class ServiceExtensions
         services.AddLogging(builder => builder.AddProvider(provider));
         services.AddSingleton(provider);
         services.TryAddSingleton<IInMemoryLogQuery>(sp => sp.GetRequiredService<InMemoryLoggerProvider>());
+    }
+}
+
+/// <summary>
+/// Hosted service that starts all registered ManagedBackgroundService instances.
+/// </summary>
+internal sealed class ManagedBackgroundServicesHost(IManagedBackgroundServiceProvider provider) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var tasks = provider.Services.Select(s => s.StartAsync(stoppingToken)).ToList();
+        if (tasks.Any())
+        {
+            await Task.WhenAll(tasks);
+        }
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        var tasks = provider.Services.Select(s => s.StopAsync(cancellationToken)).ToList();
+        if (tasks.Any())
+        {
+            await Task.WhenAll(tasks);
+        }
+        await base.StopAsync(cancellationToken);
     }
 }

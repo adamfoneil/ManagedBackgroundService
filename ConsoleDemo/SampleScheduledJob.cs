@@ -10,7 +10,7 @@ public class DoWorkJob(ILogger<DoWorkJob> logger) : IBackgroundWorker
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Scheduled work at {now}", _timeProvider.GetLocalNow());
+        _logger.LogInformation("DoWork at {now}", _timeProvider.GetLocalNow());
         await Task.CompletedTask;
     }
 }
@@ -22,7 +22,7 @@ public class AnotherTaskJob(ILogger<AnotherTaskJob> logger) : IBackgroundWorker
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("I'm doing another task as of {now}", _timeProvider.GetLocalNow());
+        _logger.LogInformation("AnotherTask at {now}", _timeProvider.GetLocalNow());
         await Task.CompletedTask;
     }
 }
