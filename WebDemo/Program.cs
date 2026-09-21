@@ -9,12 +9,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddDurableQueue(new SqLiteDurableQueue("queue.db"));
+// Register queue consumer with its DurableQueue
+builder.Services.AddQueueConsumer<SampleQueueConsumer>(new SqLiteDurableQueue("queue.db"));
 
 // Register scheduled jobs service - handlers are registered in MyScheduledJobs.RegisterHandlers()
-builder.Services.AddManagedBackgroundService<MyScheduledJobs>();
-
-builder.Services.AddManagedBackgroundService<SampleQueueConsumer>();
+builder.Services.AddScheduledJobHandler<MyScheduledJobs>();
 
 var app = builder.Build();
 
