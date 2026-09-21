@@ -14,6 +14,25 @@ public class LogEntry
     public string Category { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public Exception? Exception { get; set; }
+    public IReadOnlyList<object> Scopes { get; set; } = new List<object>();
+
+    /// <summary>
+    /// Extracts the HandlerName from the Scopes if present, returns null otherwise
+    /// </summary>
+    public string? HandlerName
+    {
+        get
+        {
+            foreach (var scope in Scopes)
+            {
+                if (scope is Dictionary<string, object> dict && dict.TryGetValue("HandlerName", out var value))
+                {
+                    return value?.ToString();
+                }
+            }
+            return null;
+        }
+    }
 }
 
 /// <summary>
@@ -28,6 +47,7 @@ public sealed class InMemoryLoggerProvider : ILoggerProvider, IInMemoryLogQuery
     private readonly int _maxCapacity;
     private readonly ConcurrentQueue<LogEntry> _buffer = new();
     private readonly Lock _lockObj = new();
+    private readonly AsyncLocal<Stack<object>> _scopeStack = new();
 
     /// <summary>
     /// Creates a new InMemoryLoggerProvider
@@ -58,6 +78,43 @@ public sealed class InMemoryLoggerProvider : ILoggerProvider, IInMemoryLogQuery
         {
             _buffer.Enqueue(entry);
             while (_buffer.Count > _maxCapacity && _buffer.TryDequeue(out _)) { }
+        }
+    }
+
+    /// <summary>
+    /// Pushes a scope onto the scope stack for the current async context
+    /// </summary>
+    internal IDisposable PushScope(object state)
+    {
+        if (_scopeStack.Value == null)
+        {
+            _scopeStack.Value = new Stack<object>();
+        }
+        var stack = _scopeStack.Value;
+        stack.Push(state);
+        return new ScopeDisposer(stack);
+    }
+
+    /// <summary>
+    /// Gets a snapshot of the current scope stack
+    /// </summary>
+    internal IReadOnlyList<object> GetCurrentScopes()
+    {
+        if (_scopeStack.Value == null || _scopeStack.Value.Count == 0)
+        {
+            return new List<object>().AsReadOnly();
+        }
+        return _scopeStack.Value.ToList().AsReadOnly();
+    }
+
+    private class ScopeDisposer(Stack<object> stack) : IDisposable
+    {
+        public void Dispose()
+        {
+            if (stack.Count > 0)
+            {
+                stack.Pop();
+            }
         }
     }
 
@@ -115,7 +172,8 @@ public sealed class InMemoryLoggerProvider : ILoggerProvider, IInMemoryLogQuery
         private readonly string _categoryName = categoryName;
         private readonly InMemoryLoggerProvider _provider = provider;
 
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull =>
+            _provider.PushScope(state);
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
@@ -136,7 +194,8 @@ public sealed class InMemoryLoggerProvider : ILoggerProvider, IInMemoryLogQuery
                 Level = logLevel,
                 Category = _categoryName,
                 Message = formatter(state, exception),
-                Exception = exception
+                Exception = exception,
+                Scopes = _provider.GetCurrentScopes()
             };
 
             _provider.LogMessage(entry);

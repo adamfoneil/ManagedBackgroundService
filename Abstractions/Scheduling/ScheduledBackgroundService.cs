@@ -47,19 +47,22 @@ public abstract class ScheduledBackgroundService(
 
             if (nextHandler is not null)
             {
-                // Execute the handler
-                try
+                using (Logger.BeginScope(new Dictionary<string, object> { { "HandlerName", nextHandler.Name } }))
                 {
-                    await nextHandler.Handler(stoppingToken);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "Error executing scheduled handler '{HandlerName}'", nextHandler.Name);
-                    await OnHandlerFailedAsync(nextHandler.Name, ex);
-                }
+                    // Execute the handler
+                    try
+                    {
+                        await nextHandler.Handler(stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "Error executing scheduled handler '{HandlerName}'", nextHandler.Name);
+                        await OnHandlerFailedAsync(nextHandler.Name, ex);
+                    }
 
-                // Update next run time for this handler
-                nextHandler.NextRunTime = nextHandler.Pattern.GetNextOccurrence(now);
+                    // Update next run time for this handler
+                    nextHandler.NextRunTime = nextHandler.Pattern.GetNextOccurrence(now);
+                }
             }
             else
             {

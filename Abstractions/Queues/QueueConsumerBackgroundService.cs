@@ -91,9 +91,12 @@ public abstract class QueueConsumerBackgroundService(
                         continue;
                     }
 
-                    Logger.LogDebug("Invoking handler {handler} with payload {payload}", queueMessage.HandlerName, queueMessage.JsonData);
-                    await (Task)handler!.DynamicInvoke(queueMessage, msgObject, stoppingToken)!;
-                    _consumed++;
+                    using (Logger.BeginScope(new Dictionary<string, object> { { "HandlerName", queueMessage.HandlerName } }))
+                    {
+                        Logger.LogDebug("Invoking handler {handler} with payload {payload}", queueMessage.HandlerName, queueMessage.JsonData);
+                        await (Task)handler!.DynamicInvoke(queueMessage, msgObject, stoppingToken)!;
+                        _consumed++;
+                    }
                     // todo: track avg wait time in queue?
                 }
                 catch (Exception exc)
