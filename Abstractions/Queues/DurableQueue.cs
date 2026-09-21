@@ -6,7 +6,7 @@ public abstract class DurableQueue
 {
     protected abstract Task StoreMessageAsync(Message message);
 
-    protected abstract Task<IEnumerable<Message>> DequeueMessagesAsync(int batchSize, string machineName, CancellationToken stoppingToken);
+    protected abstract Task<IEnumerable<Message>> DequeueMessagesAsync(string handlerName, int batchSize, string machineName, CancellationToken stoppingToken);
 
     public record Message(
         DateTime Timestamp,
@@ -22,9 +22,9 @@ public abstract class DurableQueue
         await StoreMessageAsync(new(DateTime.UtcNow, $"{typeof(T).FullName!}, {typeof(T).Assembly.GetName()}", typeof(T).Name, Environment.MachineName, payloadJson, userName));
     }
 
-    public async Task<Message[]> DequeueAsync(int batchSize, CancellationToken stoppingToken)
+    public async Task<Message[]> DequeueAsync(string handlerName, int batchSize, CancellationToken stoppingToken)
     {
-        var messages = await DequeueMessagesAsync(batchSize, Environment.MachineName, stoppingToken);
+        var messages = await DequeueMessagesAsync(handlerName, batchSize, Environment.MachineName, stoppingToken);
         return [.. messages];
     }
 }
