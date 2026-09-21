@@ -26,7 +26,7 @@ public class MessageHandlerRegistry
     /// <param name="handlerName">The handler name (typically the message type name)</param>
     /// <param name="handler">The typed handler delegate</param>
     /// <returns>This registry instance for fluent chaining</returns>
-    public MessageHandlerRegistry With<T>(string handlerName, QueueMessageHandler<T> handler) where T : notnull
+    public MessageHandlerRegistry Add<T>(string handlerName, QueueMessageHandler<T> handler) where T : notnull
     {
         Register(handlerName, handler);
         return this;
