@@ -67,14 +67,13 @@ public static class ServiceExtensions
 
     private static void AddQueueInfrastructure(IServiceCollection services, DurableQueue queue)
     {
-        services.AddSingleton(queue);
-        services.AddSingleton<DurableQueue>(queue);
+        services.AddSingleton(queue);        
         AddManagedBackgroundServiceInfrastructure(services);
     }
 
     private static void AddQueueInfrastructure(IServiceCollection services, Func<IServiceProvider, DurableQueue> queueFactory)
     {
-        services.AddSingleton<DurableQueue>(queueFactory);
+        services.AddSingleton(queueFactory);
         AddManagedBackgroundServiceInfrastructure(services);
     }
 
