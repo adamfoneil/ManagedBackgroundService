@@ -43,6 +43,33 @@ public static class ServiceExtensions
     }
 
     /// <summary>
+    /// Registers a queue consumer for a specific message type, resolving the queue from DI.
+    /// The DurableQueue must be registered in the service collection via AddDurableQueue.
+    /// Can be called multiple times to register multiple queue consumers for different message types.
+    /// </summary>
+    /// <typeparam name="TMessage">The message type this consumer handles</typeparam>
+    /// <typeparam name="TWorker">The IPayloadBackgroundWorker implementation</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddQueueConsumer<TMessage, TWorker>(
+        this IServiceCollection services)
+        where TMessage : notnull
+        where TWorker : class, IPayloadBackgroundWorker<TMessage>
+    {
+        AddManagedBackgroundServiceInfrastructure(services);
+        services.AddSingleton<TWorker>();
+        services.AddSingleton<QueueConsumerBackgroundService<TMessage>>(sp =>
+            new QueueConsumerBackgroundService<TMessage>(
+                sp.GetRequiredService<ILoggerFactory>(),
+                sp.GetRequiredService<DurableQueue>(),
+                sp.GetRequiredService<TWorker>()));
+        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
+        services.AddHostedService(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
+
+        return services;
+    }
+
+    /// <summary>
     /// Registers a queue consumer for a specific message type with a DurableQueue factory.
     /// Can be called multiple times to register multiple queue consumers for different message types.
     /// </summary>
@@ -82,6 +109,49 @@ public static class ServiceExtensions
     {
         services.AddSingleton(queueFactory);
         AddManagedBackgroundServiceInfrastructure(services);
+    }
+
+    /// <summary>
+    /// Registers a DurableQueue instance in the dependency injection container.
+    /// This enables injection of the queue throughout your application and provides cleaner
+    /// integration with other services.
+    /// </summary>
+    /// <typeparam name="TQueue">The DurableQueue implementation type</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <param name="queue">The queue instance to register</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddDurableQueue<TQueue>(
+        this IServiceCollection services,
+        TQueue queue)
+        where TQueue : DurableQueue
+    {
+        ArgumentNullException.ThrowIfNull(queue);
+
+        services.AddSingleton<DurableQueue>(queue);
+        AddManagedBackgroundServiceInfrastructure(services);
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a DurableQueue instance in the dependency injection container using a factory function.
+    /// This enables lazy initialization and dependency resolution for your queue implementation.
+    /// </summary>
+    /// <typeparam name="TQueue">The DurableQueue implementation type</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <param name="queueFactory">Factory function to create the queue instance</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddDurableQueue<TQueue>(
+        this IServiceCollection services,
+        Func<IServiceProvider, TQueue> queueFactory)
+        where TQueue : DurableQueue
+    {
+        ArgumentNullException.ThrowIfNull(queueFactory);
+
+        services.AddSingleton<DurableQueue>(sp => queueFactory(sp));
+        AddManagedBackgroundServiceInfrastructure(services);
+
+        return services;
     }
 
     /// <summary>

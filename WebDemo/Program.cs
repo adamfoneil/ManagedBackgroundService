@@ -9,10 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Register queue consumer for SampleMessage with SampleMessageHandler
-var queue = new SqLiteDurableQueue("queue.db");
+// Register durable queue and queue consumer for SampleMessage
 builder.Services
-    .AddQueueConsumer<SampleMessage, SampleMessageHandler>(queue);
+    .AddDurableQueue(sp => new SqLiteDurableQueue("queue.db"))
+    .AddQueueConsumer<SampleMessage, SampleMessageHandler>();
 
 // Register scheduled jobs
 builder.Services

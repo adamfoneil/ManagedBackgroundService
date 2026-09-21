@@ -42,14 +42,26 @@ public class SampleMessageHandler(ILogger<SampleMessageHandler> logger) : IPaylo
 }
 ```
 
-2. Implement a `PersistentQueue` abstraction for your storage mechanism (database, cloud queues, etc.). See [SqLiteDurableQueue](WebDemo/SqLiteDurableQueue.cs) and [DurableQueue](Abstractions/Queues/DurableQueue.cs) for reference implementations.
+2. Implement a `DurableQueue` abstraction for your storage mechanism (database, cloud queues, etc.). See [SqLiteDurableQueue](WebDemo/SqLiteDurableQueue.cs) and [DurableQueue](Abstractions/Queues/DurableQueue.cs) for reference implementations.
 
-3. Register the queue consumer at startup in `Program.cs`:
+3. Register the durable queue and queue consumer at startup in `Program.cs`:
 
 ```csharp
-var queue = new SqLiteDurableQueue("queue.db");
 builder.Services
-    .AddQueueConsumer<SampleMessage, SampleMessageHandler>(queue);
+    .AddDurableQueue(sp => new SqLiteDurableQueue("queue.db"))
+    .AddQueueConsumer<SampleMessage, SampleMessageHandler>();
+```
+
+The `AddDurableQueue` method registers your queue implementation in the DI container, making it available for injection throughout your application. You can then inject it wherever needed:
+
+```csharp
+public class SomeService(DurableQueue queue)
+{
+    public async Task DoSomethingAsync()
+    {
+        await queue.EnqueueAsync(new SampleMessage("Hello"), "user-id");
+    }
+}
 ```
 
 4. Enqueue messages in your application code:

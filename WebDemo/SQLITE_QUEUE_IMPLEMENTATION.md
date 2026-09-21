@@ -57,8 +57,13 @@ CREATE TABLE queue_messages (
 
 ```csharp
 // Program.cs
-builder.Services.AddSingleton<PersistentQueue>(new SqLitePersistentQueue("queue.db"));
-builder.Services.AddManagedBackgroundService<SampleQueueConsumer>();
+builder.Services
+    .AddDurableQueue<SqLiteDurableQueue>(sp => new SqLiteDurableQueue("queue.db"))
+    .AddQueueConsumer<SampleMessage, SampleMessageHandler>();
+
+// Now inject it in your components or services:
+// @inject DurableQueue Queue
+// or in a service constructor: public MyService(DurableQueue queue)
 ```
 
 ## Thread Safety
