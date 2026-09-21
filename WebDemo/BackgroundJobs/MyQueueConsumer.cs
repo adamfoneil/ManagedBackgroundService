@@ -4,7 +4,7 @@ namespace WebDemo.BackgroundJobs;
 
 public record SampleMessage(string Content);
 
-public class SampleQueueConsumer(ILoggerFactory loggerFactory, DurableQueue durableQueue) 
+public class MyQueueConsumer(ILoggerFactory loggerFactory, DurableQueue durableQueue) 
     : QueueConsumerBackgroundService(loggerFactory, durableQueue)
 {
     protected override void RegisterHandlers()

@@ -18,6 +18,7 @@ public abstract class ScheduledBackgroundService(
 
     /// <summary>
     /// Override to handle exceptions thrown by handlers.
+    /// Note that error has already been logged, so no need to log again.
     /// </summary>
     protected virtual async Task OnHandlerFailedAsync(string handlerName, Exception exception)
     {
