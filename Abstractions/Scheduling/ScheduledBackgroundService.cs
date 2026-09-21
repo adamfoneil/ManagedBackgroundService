@@ -2,42 +2,86 @@
 
 namespace ManagedBackgroundServices.Abstractions.Scheduling;
 
-public interface INextRun
-{
-    public DateTimeOffset NextRunTime { get; }
-}
-
 public abstract class ScheduledBackgroundService(
     ILoggerFactory loggerFactory,
-    TimeProvider timeProvider) : ManagedBackgroundService(loggerFactory), INextRun
+    TimeProvider timeProvider) : ManagedBackgroundService(loggerFactory)
 {
     protected readonly TimeProvider TimeProvider = timeProvider;
+    public readonly ScheduledJobHandlerRegistry Registry = new();
 
-    protected abstract Task<DateTimeOffset> GetNextRunTimeAsync(DateTimeOffset currentTime);
+    /// <summary>
+    /// Override to register scheduled job handlers using Registry.Add().
+    /// Called during service initialization before execution begins.
+    /// </summary>
+    protected abstract void RegisterHandlers();    
 
-    protected abstract Task ExecuteScheduledAsync(CancellationToken stoppingToken);
-
-    public DateTimeOffset NextRunTime { get; private set; }
+    /// <summary>
+    /// Override to handle exceptions thrown by handlers.
+    /// </summary>
+    protected virtual async Task OnHandlerFailedAsync(string handlerName, Exception exception)
+    {
+        // do nothing by default
+        await Task.CompletedTask;
+    }
 
     protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
+        // Register handlers on first execution
+        RegisterHandlers();
+
+        // Initialize next run times for all handlers
         var now = TimeProvider.GetUtcNow();
-
-        var nextRunTime = await GetNextRunTimeAsync(now);
-
-        if (nextRunTime <= NextRunTime)
+        foreach (var handler in Registry.GetHandlers())
         {
-            throw new InvalidOperationException($"{GetType().Name} returned a next run time that does not move forward. Current: {NextRunTime:O}, Next: {nextRunTime:O}");
+            handler.NextRunTime = handler.Pattern.GetNextOccurrence(now);
         }
 
-        NextRunTime = nextRunTime;
-
-        if (now < NextRunTime)
+        while (!stoppingToken.IsCancellationRequested)
         {
-            await Task.Delay(NextRunTime - now, TimeProvider, stoppingToken);
-            if (stoppingToken.IsCancellationRequested) return;
-        }
+            now = TimeProvider.GetUtcNow();
 
-        await ExecuteScheduledAsync(stoppingToken);
+            // Find the next handler(s) that should run
+            var nextHandler = Registry.GetNextHandlerToRun(now);
+
+            if (nextHandler is not null)
+            {
+                // Execute the handler
+                try
+                {
+                    await nextHandler.Handler(stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error executing scheduled handler '{HandlerName}'", nextHandler.Name);
+                    await OnHandlerFailedAsync(nextHandler.Name, ex);
+                }
+
+                // Update next run time for this handler
+                nextHandler.NextRunTime = nextHandler.Pattern.GetNextOccurrence(now);
+            }
+            else
+            {
+                // Get the next wake-up time
+                var nextWakeUp = Registry.GetNextWakeUpTime(now);
+                if (nextWakeUp is null)
+                {
+                    // No handlers registered, delay for a bit
+                    await Task.Delay(TimeSpan.FromSeconds(5), TimeProvider, stoppingToken);
+                }
+                else if (nextWakeUp.Value > now)
+                {
+                    // Sleep until the next handler should run
+                    var delay = nextWakeUp.Value - now;
+                    try
+                    {
+                        await Task.Delay(delay, TimeProvider, stoppingToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected when stopping
+                    }
+                }
+            }
+        }
     }
 }

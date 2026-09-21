@@ -1,5 +1,4 @@
 ﻿using ManagedBackgroundServices.Abstractions.Infrastructure;
-using ManagedBackgroundServices.Abstractions.Scheduling;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -25,9 +24,8 @@ internal class Program
             {
                 services.AddHealthChecks().AddCheck<BackgroundServicesHealthCheck>("Background Services");
 
-                services.AddManagedBackgroundService(sp => new SampleScheduledJob(
-                    sp.GetRequiredService<ILoggerFactory>(),
-                    RecurrencePattern.Parse("*4sec"), TimeProvider.System));
+                // Handlers are registered in SampleScheduledJob.RegisterHandlers()
+                services.AddManagedBackgroundService<SampleScheduledJob>();
             })
             .Build();
 

@@ -10,8 +10,10 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddDurableQueue(new SqLiteDurableQueue("queue.db"));
-builder.Services.AddManagedBackgroundService<SampleRecurringJob>();
-builder.Services.AddManagedBackgroundService<AnotherRecurringJob>();
+
+// Register scheduled jobs service - handlers are registered in MyScheduledJobs.RegisterHandlers()
+builder.Services.AddManagedBackgroundService<MyScheduledJobs>();
+
 builder.Services.AddManagedBackgroundService<SampleQueueConsumer>();
 
 var app = builder.Build();

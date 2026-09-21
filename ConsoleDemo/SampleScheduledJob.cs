@@ -1,22 +1,19 @@
-﻿using ManagedBackgroundServices.Abstractions.Scheduling;
+using ManagedBackgroundServices.Abstractions.Scheduling;
 using Microsoft.Extensions.Logging;
 
 namespace Samples;
 
-public class SampleScheduledJob(
-    ILoggerFactory loggerFactory,
-    RecurrencePattern pattern,
-    TimeProvider timeProvider) : ScheduledBackgroundService(loggerFactory, timeProvider)
+public class SampleScheduledJob(ILoggerFactory loggerFactory) 
+    : ScheduledBackgroundService(loggerFactory, TimeProvider.System)
 {
-    private readonly RecurrencePattern _pattern = pattern;
-
-    protected override TimeSpan RunningDelay => TimeSpan.Zero;
-
-    protected override Task ExecuteScheduledAsync(CancellationToken stoppingToken)
+    protected override void RegisterHandlers()
     {
-        Logger.LogInformation("Scheduled work at {now}, next at {next}", TimeProvider.GetLocalNow(), NextRunTime);
-        return Task.CompletedTask;
+        Registry.Add("Sample Task", DoWork, "*4sec");
     }
 
-    protected override async Task<DateTimeOffset> GetNextRunTimeAsync(DateTimeOffset currentTime) => await Task.FromResult(_pattern.GetNextOccurrence(currentTime));
+    private async Task DoWork(CancellationToken cancellationToken)
+    {
+        Logger.LogInformation("Scheduled work at {now}", TimeProvider.GetLocalNow());
+        await Task.CompletedTask;
+    }
 }

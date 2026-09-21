@@ -2,6 +2,7 @@
 @using ManagedBackgroundServices.Abstractions.Infrastructure
 @using ManagedBackgroundServices.Abstractions.Logging
 @using ManagedBackgroundServices.Abstractions.Queues
+@using ManagedBackgroundServices.Abstractions.Scheduling
 @using Microsoft.Extensions.Logging
 @inject IManagedBackgroundServiceProvider BackgroundServices
 @inject IInMemoryLogQuery LogQuery
@@ -43,10 +44,14 @@
                         <span class="small">@queueSvc.ConsumeRate.ToString("n1") / @TimeSpanExpression(queueSvc.ConsumeRateSpan)</span>
                     }
 
-                    @if (svc is INextRun nextRun)
+                    @if (svc is ScheduledBackgroundService scheduledSvc && scheduledSvc.Registry.GetHandlers().Any())
                     {
-                        <br />
-                        <span class="small">runs <strong>@GetNextRunExpression(nextRun.NextRunTime)</strong> at @ConvertToLocalTime(nextRun.NextRunTime.DateTime).ToString("yyyy-MM-dd HH:mm:ss")</span>
+                        var nextWakeUp = scheduledSvc.Registry.GetNextWakeUpTime(DateTimeOffset.UtcNow);
+                        if (nextWakeUp.HasValue)
+                        {
+                            <br />
+                            <span class="small">next scheduled job <strong>@GetNextRunExpression(nextWakeUp.Value)</strong> at @ConvertToLocalTime(nextWakeUp.Value.DateTime).ToString("yyyy-MM-dd HH:mm:ss")</span>
+                        }
                     }
 
                     @if (svc is IStatusMessage status)
