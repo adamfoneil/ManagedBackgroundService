@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Samples;
+namespace ConsoleDemo;
 
 internal class Program
 {
@@ -25,7 +25,7 @@ internal class Program
                 services.AddHealthChecks().AddCheck<BackgroundServicesHealthCheck>("Background Services");
 
                 // Handlers are registered in SampleScheduledJob.RegisterHandlers()
-                services.AddScheduledJobHandler<SampleScheduledJob>();
+                services.AddScheduledJobs<SampleScheduledJob>();
             })
             .Build();
 

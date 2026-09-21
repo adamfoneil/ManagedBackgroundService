@@ -82,7 +82,7 @@ public static class ServiceExtensions
     /// Registers a scheduled job handler that executes jobs based on recurrence patterns.
     /// The service will run in the background and can be injected where needed.
     /// </summary>
-    public static void AddScheduledJobHandler<T>(this IServiceCollection services) where T : ScheduledBackgroundService
+    public static void AddScheduledJobs<T>(this IServiceCollection services) where T : ScheduledBackgroundService
     {
         AddManagedBackgroundServiceInfrastructure(services);
         services.AddSingleton<T>();
@@ -94,7 +94,7 @@ public static class ServiceExtensions
     /// Registers a scheduled job handler with a custom factory.
     /// The service will run in the background and can be injected where needed.
     /// </summary>
-    public static void AddScheduledJobHandler<T>(this IServiceCollection services, Func<IServiceProvider, T> factory) where T : ScheduledBackgroundService
+    public static void AddScheduledJobs<T>(this IServiceCollection services, Func<IServiceProvider, T> factory) where T : ScheduledBackgroundService
     {
         AddManagedBackgroundServiceInfrastructure(services);
         services.AddSingleton(factory);

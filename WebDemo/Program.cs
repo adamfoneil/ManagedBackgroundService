@@ -13,7 +13,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddQueueConsumer<MyQueueConsumer>(new SqLiteDurableQueue("queue.db"));
 
 // Register scheduled jobs service - handlers are registered in MyScheduledJobs.RegisterHandlers()
-builder.Services.AddScheduledJobHandler<MyScheduledJobs>();
+builder.Services.AddScheduledJobs<MyScheduledJobs>();
 
 var app = builder.Build();
 
