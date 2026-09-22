@@ -16,7 +16,7 @@
             <th>Service</th>
             <th>Status</th>
             <th>Controls</th>
-            <th>@TimeColumnHeading</th>            
+            <th></th>            
             <th>Exception</th>
         </tr>
     </thead>
@@ -46,11 +46,6 @@
                         <span class="small">@queueSvc.ConsumeRate.ToString("n1") / @TimeSpanExpression(queueSvc.ConsumeRateSpan)</span>
                     }
 
-                    @if (svc is ScheduledBackgroundService scheduledSvc)
-                    {
-                        <br />
-                        <span class="small">scheduled job</span>
-                    }
 
                     @if (svc is IStatusMessage status)
                     {
@@ -74,7 +69,20 @@
                     <button class="mbs-btn" @onclick="() => ResumeService(svc)" disabled="@(svc.Status != Status.Paused)">Resume</button>
                 </td>
 
-                <td>@ConvertToLocalTime(svc.StatusDateTimeUtc).ToString("yyyy-MM-dd HH:mm:ss") | @AgeExpression(svc.StatusDateTimeUtc)</td>
+                <td>
+                    @if (svc is ScheduledBackgroundService scheduledService)
+                    {
+                        <span>@ConvertToLocalTime(scheduledService.NextRunTime.UtcDateTime).ToString("yyyy-MM-dd HH:mm:ss") | @GetNextRunExpression(scheduledService.NextRunTime)</span>
+                    }
+                    else if (svc is IQueueConsumerPerformance queueService && queueService.LastConsumedDateTimeUtc.HasValue)
+                    {
+                        <span>@ConvertToLocalTime(queueService.LastConsumedDateTimeUtc.Value).ToString("yyyy-MM-dd HH:mm:ss") | @AgeExpression(queueService.LastConsumedDateTimeUtc.Value)</span>
+                    }
+                    else
+                    {
+                        <span>@ConvertToLocalTime(svc.StatusDateTimeUtc).ToString("yyyy-MM-dd HH:mm:ss") | @AgeExpression(svc.StatusDateTimeUtc)</span>
+                    }
+                </td>
                 <td>
                     @if (svc.Exception is not null)
                     {

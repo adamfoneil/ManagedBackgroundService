@@ -24,6 +24,11 @@ public class ScheduledBackgroundService(
     public override string HandlerIdentifier => _worker.GetType().Name;
 
     /// <summary>
+    /// Gets the next scheduled run time in UTC.
+    /// </summary>
+    public DateTimeOffset NextRunTime => _nextRunTime;
+
+    /// <summary>
     /// Override to handle exceptions thrown by the worker.
     /// Note that error has already been logged, so no need to log again.
     /// </summary>

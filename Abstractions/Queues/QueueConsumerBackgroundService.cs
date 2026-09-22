@@ -8,6 +8,7 @@ public interface IQueueConsumerPerformance
 {
     decimal ConsumeRate { get; }
     TimeSpan ConsumeRateSpan { get; }
+    DateTime? LastConsumedDateTimeUtc { get; }
 }
 
 /// <summary>
@@ -28,6 +29,11 @@ public class QueueConsumerBackgroundService<T>(
     /// Returns the handler class name for identification in dashboard and logging.
     /// </summary>
     public override string HandlerIdentifier => _handler.GetType().Name;
+
+    /// <summary>
+    /// Gets the last time a message was successfully consumed (UTC).
+    /// </summary>
+    public DateTime? LastConsumedDateTimeUtc { get; private set; }
 
     protected virtual async Task OnMessageFailedAsync(DurableQueue.Message queueMessage, T? messageObject, Exception exception)
     {
@@ -92,6 +98,7 @@ public class QueueConsumerBackgroundService<T>(
                         Logger.LogDebug("Invoking handler with payload {payload}", queueMessage.JsonData);
                         await _handler.ExecuteAsync(msgObject, stoppingToken);
                         _consumed++;
+                        LastConsumedDateTimeUtc = DateTime.UtcNow;
                     }
                     catch (Exception exc)
                     {
