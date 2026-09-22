@@ -72,10 +72,12 @@
                 <td>
                     @if (svc is ScheduledBackgroundService scheduledService)
                     {
+                        <span class="small">Next Run:</span><br />
                         <span>@ConvertToLocalTime(scheduledService.NextRunTime.UtcDateTime).ToString("yyyy-MM-dd HH:mm:ss") | @GetNextRunExpression(scheduledService.NextRunTime)</span>
                     }
                     else if (svc is IQueueConsumerPerformance queueService && queueService.LastConsumedDateTimeUtc.HasValue)
                     {
+                        <span class="small">Last Run:</span><br />
                         <span>@ConvertToLocalTime(queueService.LastConsumedDateTimeUtc.Value).ToString("yyyy-MM-dd HH:mm:ss") | @AgeExpression(queueService.LastConsumedDateTimeUtc.Value)</span>
                     }
                     else
