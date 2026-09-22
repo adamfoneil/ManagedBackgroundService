@@ -97,10 +97,8 @@ public class DbCleanupJob(ILogger<DbCleanupJob> logger) : IBackgroundWorker
     private readonly ILogger<DbCleanupJob> _logger = logger;
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Running database cleanup job");
-        // Your business logic here
-        await Task.Delay(100, cancellationToken);
+    {        
+        // Your logic here        
     }
 }
 ```
@@ -126,8 +124,6 @@ builder.Services
 For more details on `RecurrencePattern` syntax, see the [tests](Testing/RecurrencePatternTests.cs).
 
 # Logging Features
-`ManagedBackgroundService` requires an `ILoggerFactory`. Do not inject your own `ILogger<T>` type. This way, your derived classes will automatically get logs categorized for the derived type name rather than the base class.
-
 An in-memory logger [InMemoryLogger](Abstractions/Logging/InMemoryLogger.cs) is added when you add background jobs to your service collection. This gives you access to your jobs' recent activity without relying on a particular observability solution. Any other logging providers you've configured will still work. The [Dashboard](RCL/Dashboard.razor) Blazor component presents running job info with related logs using the [IInMemoryLogQuery](Abstractions/Logging/IInMemoryLogQuery.cs) interface, which offers a few common log queries.
 
 # Razor Class Library
