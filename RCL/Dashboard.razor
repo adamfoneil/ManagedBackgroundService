@@ -15,8 +15,8 @@
             <th></th>
             <th>Service</th>
             <th>Status</th>
-            <th>@TimeColumnHeading</th>
             <th>Controls</th>
+            <th>@TimeColumnHeading</th>            
             <th>Exception</th>
         </tr>
     </thead>
@@ -30,7 +30,10 @@
                 <td>
                     <button class="mbs-btn mbs-expand-btn" @onclick="() => ToggleLogs(handlerIdentifier)">@(isExpanded ? "Hide" : "Show") logs</button>
                 </td>
-                <td>@handlerIdentifier</td>
+                <td>
+                    <span class="mbs-service-icon" title="@GetServiceTypeLabel(svc)" aria-label="@GetServiceTypeLabel(svc)">@GetServiceTypeIcon(svc)</span>
+                    @handlerIdentifier
+                </td>
                 <td>
                     <span class="mbs-status-chip @GetStatusCssClass(svc.Status)">
                         <span class="mbs-status-icon" aria-hidden="true">@GetStatusIcon(svc.Status)</span>
@@ -66,11 +69,12 @@
                         </span>
                     }
                 </td>
-                <td>@ConvertToLocalTime(svc.StatusDateTimeUtc).ToString("yyyy-MM-dd HH:mm:ss") | @AgeExpression(svc.StatusDateTimeUtc)</td>
                 <td>
                     <button class="mbs-btn" @onclick="() => PauseService(svc)" disabled="@(svc.Status != Status.Running)">Pause</button>
                     <button class="mbs-btn" @onclick="() => ResumeService(svc)" disabled="@(svc.Status != Status.Paused)">Resume</button>
                 </td>
+
+                <td>@ConvertToLocalTime(svc.StatusDateTimeUtc).ToString("yyyy-MM-dd HH:mm:ss") | @AgeExpression(svc.StatusDateTimeUtc)</td>
                 <td>
                     @if (svc.Exception is not null)
                     {
@@ -183,6 +187,20 @@
         Status.Paused => "mbs-status-paused",
         Status.Crashed => "mbs-status-crashed",
         _ => string.Empty
+    };
+
+    private static string GetServiceTypeIcon(ManagedBackgroundService service) => service switch
+    {
+        IQueueConsumerPerformance => "📋",
+        ScheduledBackgroundService => "⏱",
+        _ => ""
+    };
+
+    private static string GetServiceTypeLabel(ManagedBackgroundService service) => service switch
+    {
+        IQueueConsumerPerformance => "Queue Consumer",
+        ScheduledBackgroundService => "Scheduled Job",
+        _ => "Background Service"
     };
 
     private void ToggleLogs(string serviceType)

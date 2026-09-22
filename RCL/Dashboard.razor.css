@@ -24,6 +24,14 @@
     line-height: 1;
 }
 
+.mbs-service-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 0.4rem;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
 .mbs-status-running {
     color: #0a7a20;
 }
