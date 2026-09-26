@@ -117,7 +117,7 @@ public abstract class ManagedBackgroundService : BackgroundService
                     await ExecuteInternalAsync(stoppingToken);
                     await Task.Delay(RunningDelay, stoppingToken);
                 }
-                catch (Exception exc)
+                catch (Exception exc) when (exc is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
                 {
                     // catching here enables you to keep the main loop running, so you can possibly fix whatever issue happened, without restarting app
                     Pause();
