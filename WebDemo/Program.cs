@@ -1,4 +1,4 @@
-using ManagedBackgroundServices.Abstractions.Infrastructure;
+using ManagedBackgroundServices.Abstractions;
 using WebDemo;
 using WebDemo.BackgroundJobs;
 using WebDemo.Components;

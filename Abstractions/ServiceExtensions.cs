@@ -1,4 +1,5 @@
-﻿using ManagedBackgroundServices.Abstractions.Logging;
+﻿using ManagedBackgroundServices.Abstractions.Infrastructure;
+using ManagedBackgroundServices.Abstractions.Logging;
 using ManagedBackgroundServices.Abstractions.Queues;
 using ManagedBackgroundServices.Abstractions.Scheduling;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace ManagedBackgroundServices.Abstractions.Infrastructure;
+namespace ManagedBackgroundServices.Abstractions;
 
 public static class ServiceExtensions
 {
