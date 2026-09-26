@@ -156,6 +156,65 @@ public static class ServiceExtensions
     }
 
     /// <summary>
+    /// Registers multiple scheduled jobs that run on recurrence patterns.
+    /// </summary>
+    /// <param name="services">The service collection</param>
+    /// <param name="configure">Configures scheduled jobs and their recurrence patterns</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddScheduledJobs(
+        this IServiceCollection services,
+        Action<ScheduledJobsBuilder> configure)
+        => AddScheduledJobs(services, TimeProvider.System, configure);
+
+    /// <summary>
+    /// Registers multiple scheduled jobs that run on recurrence patterns with a custom TimeProvider.
+    /// </summary>
+    /// <param name="services">The service collection</param>
+    /// <param name="timeProvider">The time provider to use for scheduling</param>
+    /// <param name="configure">Configures scheduled jobs and their recurrence patterns</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddScheduledJobs(
+        this IServiceCollection services,
+        TimeProvider timeProvider,
+        Action<ScheduledJobsBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        AddManagedBackgroundServiceInfrastructure(services);
+        services.TryAddSingleton<IScheduledJobRegistry, ScheduledJobRegistry>();
+
+        var builder = new ScheduledJobsBuilder();
+        configure(builder);
+
+        var existingJobTypes = services
+            .Where(sd => sd.ServiceType == typeof(ScheduledJobRegistration))
+            .Select(sd => sd.ImplementationInstance)
+            .OfType<ScheduledJobRegistration>()
+            .Select(x => x.JobType)
+            .ToHashSet();
+
+        foreach (var registration in builder.Jobs)
+        {
+            if (!existingJobTypes.Add(registration.JobType))
+            {
+                throw new InvalidOperationException($"A scheduled job has already been registered for {registration.JobType.Name}.");
+            }
+
+            services.AddSingleton(registration);
+            services.AddSingleton(registration.JobType);
+            services.AddSingleton<ManagedBackgroundService>(sp =>
+                new ScheduledBackgroundService(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    timeProvider,
+                    registration.Pattern,
+                    (ManagedBackgroundService)sp.GetRequiredService(registration.JobType)));
+        }
+
+        return services;
+    }
+
+    /// <summary>
     /// Registers a scheduled job that runs on a recurrence pattern.
     /// Can be called multiple times to register multiple scheduled jobs with different patterns.
     /// </summary>
@@ -180,7 +239,9 @@ public static class ServiceExtensions
                 sp.GetRequiredService<ILoggerFactory>(),
                 TimeProvider.System,
                 pattern,
-                sp.GetRequiredService<TWorker>()));
+                new BackgroundWorkerAdapter<TWorker>(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<TWorker>())));
 
         return services;
     }
@@ -214,7 +275,9 @@ public static class ServiceExtensions
                 sp.GetRequiredService<ILoggerFactory>(),
                 timeProvider,
                 pattern,
-                sp.GetRequiredService<TWorker>()));
+                new BackgroundWorkerAdapter<TWorker>(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<TWorker>())));
 
         return services;
     }
@@ -231,7 +294,9 @@ public static class ServiceExtensions
         services.TryAddSingleton<IManagedBackgroundServiceProvider, ManagedBackgroundServiceProvider>();
 
         // Only register the host once to avoid duplicates
-        var hasHost = services.Any(x => x.ServiceType == typeof(ManagedBackgroundServicesHost));
+        var hasHost = services.Any(x =>
+            x.ServiceType == typeof(IHostedService) &&
+            x.ImplementationType == typeof(ManagedBackgroundServicesHost));
         if (!hasHost)
         {
             services.AddHostedService<ManagedBackgroundServicesHost>();
@@ -258,6 +323,18 @@ public static class ServiceExtensions
         services.AddSingleton(provider);
         services.TryAddSingleton<IInMemoryLogQuery>(sp => sp.GetRequiredService<InMemoryLoggerProvider>());
     }
+}
+
+internal sealed class BackgroundWorkerAdapter<TWorker>(
+    ILoggerFactory loggerFactory,
+    TWorker worker) : ManagedBackgroundService(loggerFactory)
+    where TWorker : class, IBackgroundWorker
+{
+    private readonly TWorker _worker = worker;
+
+    public override string HandlerIdentifier => _worker.GetType().Name;
+
+    protected override Task ExecuteInternalAsync(CancellationToken stoppingToken) => _worker.ExecuteAsync(stoppingToken);
 }
 
 /// <summary>

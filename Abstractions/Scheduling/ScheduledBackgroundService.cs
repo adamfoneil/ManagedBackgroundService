@@ -5,23 +5,23 @@ namespace ManagedBackgroundServices.Abstractions.Scheduling;
 
 /// <summary>
 /// Single-job scheduled background service.
-/// Runs one job on a recurrence pattern using IBackgroundWorker.
+/// Runs one managed background job on a recurrence pattern.
 /// </summary>
 public class ScheduledBackgroundService(
     ILoggerFactory loggerFactory,
     TimeProvider timeProvider,
     RecurrencePattern pattern,
-    IBackgroundWorker worker) : ManagedBackgroundService(loggerFactory)
+    ManagedBackgroundService worker) : ManagedBackgroundService(loggerFactory)
 {
     private readonly TimeProvider _timeProvider = timeProvider;
     private readonly RecurrencePattern _pattern = pattern;
-    private readonly IBackgroundWorker _worker = worker;
+    private readonly ManagedBackgroundService _worker = worker;
     private DateTimeOffset _nextRunTime = DateTimeOffset.MinValue;
 
     /// <summary>
     /// Returns the worker class name for identification in dashboard and logging.
     /// </summary>
-    public override string HandlerIdentifier => _worker.GetType().Name;
+    public override string HandlerIdentifier => _worker.HandlerIdentifier;
 
     /// <summary>
     /// Gets the next scheduled run time in UTC.
@@ -55,12 +55,13 @@ public class ScheduledBackgroundService(
                     try
                     {
                         Logger.LogDebug("Executing scheduled job");
-                        await _worker.ExecuteAsync(stoppingToken);
+                        await _worker.ExecuteOnceAsync(stoppingToken);
                     }
                     catch (Exception ex)
                     {
                         Logger.LogError(ex, "Error executing scheduled job");
                         await OnHandlerFailedAsync(ex);
+                        throw;
                     }
                 }
 

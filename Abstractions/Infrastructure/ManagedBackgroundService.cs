@@ -44,6 +44,9 @@ public abstract class ManagedBackgroundService : BackgroundService
     /// this is your custom logic for the background service
     /// </summary>
     protected abstract Task ExecuteInternalAsync(CancellationToken stoppingToken);
+
+    internal Task ExecuteOnceAsync(CancellationToken stoppingToken) => ExecuteInternalAsync(stoppingToken);
+
     /// <summary>
     /// defined pause time between inner loop cycles -- gives the machine a bit of a "breather" between executions
     /// </summary>

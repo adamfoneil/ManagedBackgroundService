@@ -3,26 +3,24 @@ using Microsoft.Extensions.Logging;
 
 namespace ConsoleDemo;
 
-public class DoWorkJob(ILogger<DoWorkJob> logger) : IBackgroundWorker
+public class DoWorkJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
 {
-    private readonly ILogger<DoWorkJob> _logger = logger;
     private readonly TimeProvider _timeProvider = TimeProvider.System;
 
-    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("DoWork at {now}", _timeProvider.GetLocalNow());
-        await Task.CompletedTask;
+        Logger.LogInformation("DoWork at {now}", _timeProvider.GetLocalNow());
+        return Task.CompletedTask;
     }
 }
 
-public class AnotherTaskJob(ILogger<AnotherTaskJob> logger) : IBackgroundWorker
+public class AnotherTaskJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
 {
-    private readonly ILogger<AnotherTaskJob> _logger = logger;
     private readonly TimeProvider _timeProvider = TimeProvider.System;
 
-    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("AnotherTask at {now}", _timeProvider.GetLocalNow());
-        await Task.CompletedTask;
+        Logger.LogInformation("AnotherTask at {now}", _timeProvider.GetLocalNow());
+        return Task.CompletedTask;
     }
 }

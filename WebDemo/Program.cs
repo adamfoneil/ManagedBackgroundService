@@ -15,11 +15,13 @@ builder.Services
     .AddQueueConsumer<SampleMessage, SampleMessageHandler>();
 
 // Register scheduled jobs
-builder.Services
-    .AddScheduledJob<DbCleanupJob>("*1d t[2:00am]")
-    .AddScheduledJob<ReindexJob>("d[mon..fri] t[9:30am, 3:30pm]")
-    .AddScheduledJob<WeeklyReportsJob>("d[sat] tz:America/New_York")
-    .AddScheduledJob<FrequentJob>("*5s");
+builder.Services.AddScheduledJobs(schedule =>
+{
+    schedule.Add<DbCleanupJob>("*1d t[2:00am]");
+    schedule.Add<ReindexJob>("d[mon..fri] t[9:30am, 3:30pm]");
+    schedule.Add<WeeklyReportsJob>("d[sat] tz:America/New_York");
+    schedule.Add<FrequentJob>("*5s");
+});
 
 var app = builder.Build();
 

@@ -89,16 +89,15 @@ public class SomeService(DurableQueue queue)
 
 # Using ScheduledBackgroundService
 
-[ScheduledBackgroundService](Abstractions/ScheduledBackgroundService.cs) is for running jobs on a schedule. Create a class that implements `IBackgroundWorker`:
+[ScheduledBackgroundService](Abstractions/ScheduledBackgroundService.cs) runs jobs on a schedule. Create a class that derives from `ManagedBackgroundService` and performs one scheduled execution each time `ExecuteInternalAsync` runs:
 
 ```csharp
-public class DbCleanupJob(ILogger<DbCleanupJob> logger) : IBackgroundWorker
+public class DbCleanupJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
 {
-    private readonly ILogger<DbCleanupJob> _logger = logger;
-
-    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {        
-        // Your logic here        
+        Logger.LogInformation("Running database cleanup job");
+        await Task.Delay(100, stoppingToken);
     }
 }
 ```
@@ -106,11 +105,13 @@ public class DbCleanupJob(ILogger<DbCleanupJob> logger) : IBackgroundWorker
 Register your scheduled jobs at startup using `RecurrencePattern` expressions:
 
 ```csharp
-builder.Services
-    .AddScheduledJob<DbCleanupJob>("*1d t[2:00am]")
-    .AddScheduledJob<ReindexJob>("d[mon..fri] t[9:30am, 3:30pm]")
-    .AddScheduledJob<WeeklyReportsJob>("d[sat]")
-    .AddScheduledJob<FrequentJob>("*5s");
+builder.Services.AddScheduledJobs(schedule =>
+{
+    schedule.Add<DbCleanupJob>("*1d t[2:00am]");
+    schedule.Add<ReindexJob>("d[mon..fri] t[9:30am, 3:30pm]");
+    schedule.Add<WeeklyReportsJob>("d[sat]");
+    schedule.Add<FrequentJob>("*5s");
+});
 ```
 
 **RecurrencePattern Examples:**
@@ -131,5 +132,4 @@ The [RCL](/RCL/RCL.csproj) project has components for Blazor Server apps for man
 - [Dashboard](RCL/Dashboard.razor) used here in the [demo page](WebDemo/Components/Pages/Home.razor)
 
 ![img](dashboard-demo.png)
-
 

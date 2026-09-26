@@ -1,14 +1,12 @@
-﻿using ManagedBackgroundServices.Abstractions.Infrastructure;
+using ManagedBackgroundServices.Abstractions.Infrastructure;
 
 namespace WebDemo.BackgroundJobs;
 
-public class FrequentJob(ILogger<FrequentJob> logger) : IBackgroundWorker
+public class FrequentJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
 {
-    private readonly ILogger<FrequentJob> _logger = logger;
-
-    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("I'm doing frequent work");
-        await Task.CompletedTask;
+        Logger.LogInformation("I'm doing frequent work");
+        return Task.CompletedTask;
     }
 }

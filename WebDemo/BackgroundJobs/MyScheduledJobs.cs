@@ -2,35 +2,29 @@ using ManagedBackgroundServices.Abstractions.Infrastructure;
 
 namespace WebDemo.BackgroundJobs;
 
-public class DbCleanupJob(ILogger<DbCleanupJob> logger) : IBackgroundWorker
+public class DbCleanupJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
 {
-    private readonly ILogger<DbCleanupJob> _logger = logger;
-
-    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Running database cleanup job");
-        await Task.Delay(100, cancellationToken);
+        Logger.LogInformation("Running database cleanup job");
+        await Task.Delay(100, stoppingToken);
     }
 }
 
-public class ReindexJob(ILogger<ReindexJob> logger) : IBackgroundWorker
+public class ReindexJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
 {
-    private readonly ILogger<ReindexJob> _logger = logger;
-
-    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Running reindex job");
-        await Task.Delay(150, cancellationToken);
+        Logger.LogInformation("Running reindex job");
+        await Task.Delay(150, stoppingToken);
     }
 }
 
-public class WeeklyReportsJob(ILogger<WeeklyReportsJob> logger) : IBackgroundWorker
+public class WeeklyReportsJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
 {
-    private readonly ILogger<WeeklyReportsJob> _logger = logger;
-
-    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Running weekly reports job");
-        await Task.Delay(200, cancellationToken);
+        Logger.LogInformation("Running weekly reports job");
+        await Task.Delay(200, stoppingToken);
     }
 }
