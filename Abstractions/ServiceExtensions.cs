@@ -31,6 +31,14 @@ public static class ServiceExtensions
         ArgumentNullException.ThrowIfNull(configure);
         ArgumentNullException.ThrowIfNull(queueFactory);
 
+        if (services.Any(sd =>
+            sd.ServiceType == typeof(QueueBuilderRegistrationMarker) ||
+            sd.ServiceType == typeof(DurableQueue)))
+        {
+            throw new InvalidOperationException("A durable queue has already been registered. Call AddQueue only once and register all handlers within that call.");
+        }
+
+        services.TryAddSingleton<QueueBuilderRegistrationMarker>();
         services.AddDurableQueue(queueFactory);
         services.TryAddSingleton<IQueueHandlerRegistry, QueueHandlerRegistry>();
 
@@ -84,7 +92,7 @@ public static class ServiceExtensions
 
     /// <summary>
     /// Registers a queue consumer for a specific message type, resolving the queue from DI.
-    /// The DurableQueue must be registered in the service collection via AddDurableQueue.
+    /// The DurableQueue must already be registered in the service collection, such as via AddDurableQueue or AddQueue.
     /// Can be called multiple times to register multiple queue consumers for different message types.
     /// </summary>
     /// <typeparam name="TMessage">The message type this consumer handles</typeparam>
@@ -379,6 +387,8 @@ internal sealed class BackgroundWorkerAdapter<TWorker>(
 
     protected override Task ExecuteInternalAsync(CancellationToken stoppingToken) => _worker.ExecuteAsync(stoppingToken);
 }
+
+internal sealed class QueueBuilderRegistrationMarker;
 
 /// <summary>
 /// Hosted service that starts all registered ManagedBackgroundService instances.

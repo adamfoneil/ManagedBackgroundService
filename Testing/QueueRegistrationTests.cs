@@ -81,7 +81,7 @@ public sealed class QueueRegistrationTests
         var services = new ServiceCollection();
 
         services.AddQueue<TestDurableQueue>(handlers => handlers.Add<FirstMessage, FirstHandler>());
-        services.AddQueue<TestDurableQueue>(handlers => handlers.Add<SecondMessage, SecondHandler>(), sp => new TestDurableQueue("factory"));
+        services.AddQueueConsumer<SecondMessage, SecondHandler>();
 
         var hostRegistrations = services
             .Where(x => x.ServiceType == typeof(IHostedService) &&
@@ -89,6 +89,24 @@ public sealed class QueueRegistrationTests
             .ToList();
 
         Assert.AreEqual(1, hostRegistrations.Count);
+    }
+
+    [TestMethod]
+    public void AddQueue_RejectsMultipleQueueRegistrations()
+    {
+        var services = new ServiceCollection();
+
+        services.AddQueue<TestDurableQueue>(handlers => handlers.Add<FirstMessage, FirstHandler>());
+
+        try
+        {
+            services.AddQueue<TestDurableQueue>(handlers => handlers.Add<SecondMessage, SecondHandler>());
+            Assert.Fail("Expected duplicate queue registration to throw.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            StringAssert.Contains(ex.Message, "AddQueue");
+        }
     }
 
     private sealed record FirstMessage(string Value);
