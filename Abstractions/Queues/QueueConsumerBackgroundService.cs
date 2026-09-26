@@ -84,27 +84,24 @@ public class QueueConsumerBackgroundService<T>(
             {
                 T? msgObject = default;
 
-                using (Logger.BeginScope(new Dictionary<string, object> { { "HandlerName", HandlerIdentifier } }))
+                try
                 {
-                    try
+                    msgObject = DeserializeMessage(queueMessage.TypeName, queueMessage.JsonData);
+                    if (msgObject is null)
                     {
-                        msgObject = DeserializeMessage(queueMessage.TypeName, queueMessage.JsonData);
-                        if (msgObject is null)
-                        {
-                            Logger.LogWarning("Message json deserialized to null: {data}", queueMessage.JsonData);
-                            continue;
-                        }
+                        Logger.LogWarning("Message json deserialized to null: {data}", queueMessage.JsonData);
+                        continue;
+                    }
 
-                        Logger.LogDebug("Invoking handler with payload {payload}", queueMessage.JsonData);
-                        await _handler.ExecuteAsync(msgObject, stoppingToken);
-                        _consumed++;
-                        LastConsumedDateTimeUtc = DateTime.UtcNow;
-                    }
-                    catch (Exception exc)
-                    {
-                        Logger.LogError(exc, "Error processing message type {TypeName}", queueMessage.TypeName);
-                        await OnMessageFailedAsync(queueMessage, msgObject, exc);
-                    }
+                    Logger.LogDebug("Invoking handler with payload {payload}", queueMessage.JsonData);
+                    await _handler.ExecuteAsync(msgObject, stoppingToken);
+                    _consumed++;
+                    LastConsumedDateTimeUtc = DateTime.UtcNow;
+                }
+                catch (Exception exc)
+                {
+                    Logger.LogError(exc, "Error processing message type {TypeName}", queueMessage.TypeName);
+                    await OnMessageFailedAsync(queueMessage, msgObject, exc);
                 }
             }
 
