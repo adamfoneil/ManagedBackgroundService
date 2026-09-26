@@ -9,7 +9,7 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>ManagedBackgroundServices.Abstractions</PackageId>
     <Title>Managed BackgroundService Abstractions</Title>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>Adam O'Neil</Authors>
     <Copyright>Copyright (c) 2026 Adam O'Neil</Copyright>
     <PackageProjectUrl>https://github.com/adamfoneil/ManagedBackgroundService</PackageProjectUrl>
