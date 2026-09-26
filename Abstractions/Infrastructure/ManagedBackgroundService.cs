@@ -23,6 +23,11 @@ public abstract class ManagedBackgroundService : BackgroundService
 {
     protected ILogger Logger { get; }
 
+    /// <summary>
+    /// I pass ILoggerFactory as required arg for two reasons:
+    /// - derived classes are categorized properly (rather than being called "ManagedBackgroundService")
+    /// - Logs appear in the dashboard with some minimum consistency. If delegated to derived classes, they may do their own thing and not be visible in Dashboard.razor
+    /// </summary>
     public ManagedBackgroundService(ILoggerFactory loggerFactory)
     {
         Logger = loggerFactory.CreateLogger(GetType().FullName!);
