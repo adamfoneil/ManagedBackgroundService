@@ -44,15 +44,25 @@ public class SampleMessageHandler(ILogger<SampleMessageHandler> logger) : IPaylo
 
 2. Implement a `DurableQueue` abstraction for your storage mechanism (database, cloud queues, etc.). See [SqLiteDurableQueue](WebDemo/SqLiteDurableQueue.cs) and [DurableQueue](Abstractions/Queues/DurableQueue.cs) for reference implementations.
 
-3. Register the durable queue and queue consumer at startup in `Program.cs`:
+3. Register the durable queue and queue consumers at startup in `Program.cs`:
 
 ```csharp
 builder.Services
-    .AddDurableQueue(sp => new SqLiteDurableQueue("queue.db"))
-    .AddQueueConsumer<SampleMessage, SampleMessageHandler>();
+    .AddQueue<SqLiteDurableQueue>(handlers =>
+    {
+        handlers.Add<SampleMessage, SampleMessageHandler>();
+    });
 ```
 
-The `AddDurableQueue` method registers your queue implementation in the DI container, making it available for injection throughout your application. You can then inject it wherever needed:
+If your queue needs custom construction, use the overload with a factory:
+
+```csharp
+builder.Services.AddQueue<SqLiteDurableQueue>(
+    handlers => handlers.Add<SampleMessage, SampleMessageHandler>(),
+    sp => new SqLiteDurableQueue("queue.db"));
+```
+
+The queue registration makes your `DurableQueue` implementation available for injection throughout your application. You can then inject it wherever needed:
 
 ```csharp
 public class SomeService(DurableQueue queue)
@@ -132,4 +142,3 @@ The [RCL](/RCL/RCL.csproj) project has components for Blazor Server apps for man
 - [Dashboard](RCL/Dashboard.razor) used here in the [demo page](WebDemo/Components/Pages/Home.razor)
 
 ![img](dashboard-demo.png)
-

@@ -13,6 +13,60 @@ public static class ServiceExtensions
 {
     private const int DefaultInMemoryLogCapacity = 250;
 
+    public static IServiceCollection AddQueue<TQueue>(
+        this IServiceCollection services,
+        Action<QueueHandlersBuilder> configure)
+        where TQueue : DurableQueue
+        => AddQueue<TQueue>(
+            services,
+            configure,
+            sp => ActivatorUtilities.CreateInstance<TQueue>(sp));
+
+    public static IServiceCollection AddQueue<TQueue>(
+        this IServiceCollection services,
+        Action<QueueHandlersBuilder> configure,
+        Func<IServiceProvider, TQueue> queueFactory)
+        where TQueue : DurableQueue
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        ArgumentNullException.ThrowIfNull(queueFactory);
+
+        if (services.Any(sd =>
+            sd.ServiceType == typeof(QueueBuilderRegistrationMarker) ||
+            sd.ServiceType == typeof(DurableQueue)))
+        {
+            throw new InvalidOperationException("A durable queue has already been registered. Call AddQueue only once and register all handlers within that call.");
+        }
+
+        services.TryAddSingleton<QueueBuilderRegistrationMarker>();
+        services.AddDurableQueue(queueFactory);
+        services.TryAddSingleton<IQueueHandlerRegistry, QueueHandlerRegistry>();
+
+        var builder = new QueueHandlersBuilder();
+        configure(builder);
+
+        var existingMessageTypes = services
+            .Where(sd => sd.ServiceType == typeof(QueueHandlerRegistration))
+            .Select(sd => sd.ImplementationInstance)
+            .OfType<QueueHandlerRegistration>()
+            .Select(x => x.MessageType)
+            .ToHashSet();
+
+        foreach (var entry in builder.Handlers)
+        {
+            var registration = entry.Registration;
+            if (!existingMessageTypes.Add(registration.MessageType))
+            {
+                throw new InvalidOperationException($"A queue handler has already been registered for {registration.MessageType.Name}.");
+            }
+
+            services.AddSingleton(registration);
+            entry.RegisterServices(services);
+        }
+
+        return services;
+    }
+
     /// <summary>
     /// Registers a queue consumer for a specific message type.
     /// Can be called multiple times to register multiple queue consumers for different message types.
@@ -31,21 +85,14 @@ public static class ServiceExtensions
         ArgumentNullException.ThrowIfNull(queue);
 
         AddQueueInfrastructure(services, queue);
-        services.AddSingleton<TWorker>();
-        services.AddSingleton<QueueConsumerBackgroundService<TMessage>>(sp =>
-            new QueueConsumerBackgroundService<TMessage>(
-                sp.GetRequiredService<ILoggerFactory>(),
-                queue,
-                sp.GetRequiredService<TWorker>()));
-        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
-        services.AddHostedService(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
+        RegisterQueueConsumer<TMessage, TWorker>(services, _ => queue);
 
         return services;
     }
 
     /// <summary>
     /// Registers a queue consumer for a specific message type, resolving the queue from DI.
-    /// The DurableQueue must be registered in the service collection via AddDurableQueue.
+    /// The DurableQueue must already be registered in the service collection, such as via AddDurableQueue or AddQueue.
     /// Can be called multiple times to register multiple queue consumers for different message types.
     /// </summary>
     /// <typeparam name="TMessage">The message type this consumer handles</typeparam>
@@ -58,14 +105,7 @@ public static class ServiceExtensions
         where TWorker : class, IPayloadBackgroundWorker<TMessage>
     {
         AddManagedBackgroundServiceInfrastructure(services);
-        services.AddSingleton<TWorker>();
-        services.AddSingleton<QueueConsumerBackgroundService<TMessage>>(sp =>
-            new QueueConsumerBackgroundService<TMessage>(
-                sp.GetRequiredService<ILoggerFactory>(),
-                sp.GetRequiredService<DurableQueue>(),
-                sp.GetRequiredService<TWorker>()));
-        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
-        services.AddHostedService(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
+        RegisterQueueConsumer<TMessage, TWorker>(services, sp => sp.GetRequiredService<DurableQueue>());
 
         return services;
     }
@@ -88,14 +128,7 @@ public static class ServiceExtensions
         ArgumentNullException.ThrowIfNull(queueFactory);
 
         AddQueueInfrastructure(services, queueFactory);
-        services.AddSingleton<TWorker>();
-        services.AddSingleton<QueueConsumerBackgroundService<TMessage>>(sp =>
-            new QueueConsumerBackgroundService<TMessage>(
-                sp.GetRequiredService<ILoggerFactory>(),
-                queueFactory(sp),
-                sp.GetRequiredService<TWorker>()));
-        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
-        services.AddHostedService(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
+        RegisterQueueConsumer<TMessage, TWorker>(services, queueFactory);
 
         return services;
     }
@@ -128,7 +161,8 @@ public static class ServiceExtensions
     {
         ArgumentNullException.ThrowIfNull(queue);
 
-        services.AddSingleton<DurableQueue>(queue);
+        services.AddSingleton<TQueue>(queue);
+        services.AddSingleton<DurableQueue>(sp => sp.GetRequiredService<TQueue>());
         AddManagedBackgroundServiceInfrastructure(services);
 
         return services;
@@ -149,10 +183,27 @@ public static class ServiceExtensions
     {
         ArgumentNullException.ThrowIfNull(queueFactory);
 
-        services.AddSingleton<DurableQueue>(sp => queueFactory(sp));
+        services.AddSingleton<TQueue>(queueFactory);
+        services.AddSingleton<DurableQueue>(sp => sp.GetRequiredService<TQueue>());
         AddManagedBackgroundServiceInfrastructure(services);
 
         return services;
+    }
+
+    private static void RegisterQueueConsumer<TMessage, TWorker>(
+        IServiceCollection services,
+        Func<IServiceProvider, DurableQueue> queueResolver)
+        where TMessage : notnull
+        where TWorker : class, IPayloadBackgroundWorker<TMessage>
+    {
+        services.AddSingleton<TWorker>();
+        services.AddSingleton<QueueConsumerBackgroundService<TMessage>>(sp =>
+            new QueueConsumerBackgroundService<TMessage>(
+                sp.GetRequiredService<ILoggerFactory>(),
+                queueResolver(sp),
+                sp.GetRequiredService<TWorker>()));
+        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
+        services.AddHostedService(sp => sp.GetRequiredService<QueueConsumerBackgroundService<TMessage>>());
     }
 
     /// <summary>
@@ -336,6 +387,8 @@ internal sealed class BackgroundWorkerAdapter<TWorker>(
 
     protected override Task ExecuteInternalAsync(CancellationToken stoppingToken) => _worker.ExecuteAsync(stoppingToken);
 }
+
+internal sealed class QueueBuilderRegistrationMarker;
 
 /// <summary>
 /// Hosted service that starts all registered ManagedBackgroundService instances.

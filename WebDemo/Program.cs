@@ -11,8 +11,10 @@ builder.Services.AddRazorComponents()
 
 // Register durable queue and queue consumer for SampleMessage
 builder.Services
-    .AddDurableQueue(sp => new SqLiteDurableQueue("queue.db"))
-    .AddQueueConsumer<SampleMessage, SampleMessageHandler>();
+    .AddQueue<SqLiteDurableQueue>(handlers =>
+    {
+        handlers.Add<SampleMessage, SampleMessageHandler>();
+    });
 
 // Register scheduled jobs
 builder.Services.AddScheduledJobs(schedule =>

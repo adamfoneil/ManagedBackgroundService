@@ -58,8 +58,9 @@ CREATE TABLE queue_messages (
 ```csharp
 // Program.cs
 builder.Services
-    .AddDurableQueue<SqLiteDurableQueue>(sp => new SqLiteDurableQueue("queue.db"))
-    .AddQueueConsumer<SampleMessage, SampleMessageHandler>();
+    .AddQueue<SqLiteDurableQueue>(
+        handlers => handlers.Add<SampleMessage, SampleMessageHandler>(),
+        sp => new SqLiteDurableQueue("queue.db"));
 
 // Now inject it in your components or services:
 // @inject DurableQueue Queue
