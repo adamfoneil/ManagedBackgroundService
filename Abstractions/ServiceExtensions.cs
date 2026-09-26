@@ -153,7 +153,7 @@ public static class ServiceExtensions
     {
         ArgumentNullException.ThrowIfNull(queue);
 
-        services.AddSingleton(queue);
+        services.AddSingleton<TQueue>(queue);
         services.AddSingleton<DurableQueue>(sp => sp.GetRequiredService<TQueue>());
         AddManagedBackgroundServiceInfrastructure(services);
 
