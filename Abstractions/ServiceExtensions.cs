@@ -6,16 +6,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.Reflection;
 
 namespace ManagedBackgroundServices.Abstractions;
 
 public static class ServiceExtensions
 {
     private const int DefaultInMemoryLogCapacity = 250;
-    private static readonly MethodInfo RegisterQueueConsumerFromRegistryMethod = typeof(ServiceExtensions)
-        .GetMethod(nameof(RegisterQueueConsumerFromRegistry), BindingFlags.NonPublic | BindingFlags.Static)
-        ?? throw new InvalidOperationException($"Could not resolve {nameof(RegisterQueueConsumerFromRegistry)}.");
 
     public static IServiceCollection AddQueue<TQueue>(
         this IServiceCollection services,
@@ -48,17 +44,16 @@ public static class ServiceExtensions
             .Select(x => x.MessageType)
             .ToHashSet();
 
-        foreach (var registration in builder.Handlers)
+        foreach (var entry in builder.Handlers)
         {
+            var registration = entry.Registration;
             if (!existingMessageTypes.Add(registration.MessageType))
             {
                 throw new InvalidOperationException($"A queue handler has already been registered for {registration.MessageType.Name}.");
             }
 
             services.AddSingleton(registration);
-            RegisterQueueConsumerFromRegistryMethod
-                .MakeGenericMethod(registration.MessageType, registration.HandlerType)
-                .Invoke(null, [services]);
+            entry.RegisterServices(services);
         }
 
         return services;
@@ -158,7 +153,8 @@ public static class ServiceExtensions
     {
         ArgumentNullException.ThrowIfNull(queue);
 
-        services.AddSingleton<DurableQueue>(queue);
+        services.AddSingleton(queue);
+        services.AddSingleton<DurableQueue>(sp => sp.GetRequiredService<TQueue>());
         AddManagedBackgroundServiceInfrastructure(services);
 
         return services;
@@ -179,17 +175,12 @@ public static class ServiceExtensions
     {
         ArgumentNullException.ThrowIfNull(queueFactory);
 
-        services.AddSingleton(queueFactory);
+        services.AddSingleton<TQueue>(queueFactory);
         services.AddSingleton<DurableQueue>(sp => sp.GetRequiredService<TQueue>());
         AddManagedBackgroundServiceInfrastructure(services);
 
         return services;
     }
-
-    private static void RegisterQueueConsumerFromRegistry<TMessage, TWorker>(IServiceCollection services)
-        where TMessage : notnull
-        where TWorker : class, IPayloadBackgroundWorker<TMessage>
-        => RegisterQueueConsumer<TMessage, TWorker>(services, sp => sp.GetRequiredService<DurableQueue>());
 
     private static void RegisterQueueConsumer<TMessage, TWorker>(
         IServiceCollection services,

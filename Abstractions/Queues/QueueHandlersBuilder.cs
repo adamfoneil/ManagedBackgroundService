@@ -1,4 +1,5 @@
 using ManagedBackgroundServices.Abstractions.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ManagedBackgroundServices.Abstractions.Queues;
 
@@ -11,9 +12,9 @@ public interface IQueueHandlerRegistry
 
 public sealed class QueueHandlersBuilder
 {
-    private readonly Dictionary<Type, QueueHandlerRegistration> _handlers = [];
+    private readonly Dictionary<Type, QueueHandlerBuilderEntry> _handlers = [];
 
-    internal IReadOnlyCollection<QueueHandlerRegistration> Handlers => _handlers.Values;
+    internal IReadOnlyCollection<QueueHandlerBuilderEntry> Handlers => _handlers.Values;
 
     public QueueHandlersBuilder Add<TMessage, THandler>()
         where TMessage : notnull
@@ -21,7 +22,10 @@ public sealed class QueueHandlersBuilder
     {
         var messageType = typeof(TMessage);
         var registration = new QueueHandlerRegistration(messageType, typeof(THandler));
-        if (!_handlers.TryAdd(messageType, registration))
+        var entry = new QueueHandlerBuilderEntry(
+            registration,
+            services => services.AddQueueConsumer<TMessage, THandler>());
+        if (!_handlers.TryAdd(messageType, entry))
         {
             throw new InvalidOperationException($"A queue handler has already been registered for {messageType.Name}.");
         }
@@ -34,3 +38,7 @@ internal sealed class QueueHandlerRegistry(IEnumerable<QueueHandlerRegistration>
 {
     public IReadOnlyCollection<QueueHandlerRegistration> Handlers { get; } = [.. handlers];
 }
+
+internal sealed record QueueHandlerBuilderEntry(
+    QueueHandlerRegistration Registration,
+    Action<IServiceCollection> RegisterServices);
