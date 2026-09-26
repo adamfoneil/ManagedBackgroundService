@@ -94,7 +94,10 @@ public class QueueConsumerBackgroundService<T>(
                     }
 
                     Logger.LogDebug("Invoking handler with payload {payload}", queueMessage.JsonData);
-                    await _handler.ExecuteAsync(msgObject, stoppingToken);
+                    using (Logger.BeginScope(new Dictionary<string, object> { { "HandlerName", HandlerIdentifier } }))
+                    {
+                        await _handler.ExecuteAsync(msgObject, stoppingToken);
+                    }
                     _consumed++;
                     LastConsumedDateTimeUtc = DateTime.UtcNow;
                 }
