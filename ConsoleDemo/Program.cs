@@ -25,9 +25,11 @@ internal class Program
             {
                 services.AddHealthChecks().AddCheck<BackgroundServicesHealthCheck>("Background Services");
 
-                services
-                    .AddScheduledJob<DoWorkJob>("*4sec")
-                    .AddScheduledJob<AnotherTaskJob>("*6sec");
+                services.AddScheduledJobs(schedule =>
+                {
+                    schedule.Add<DoWorkJob>("*4sec");
+                    schedule.Add<AnotherTaskJob>("*6sec");
+                });
             })
             .Build();
 
