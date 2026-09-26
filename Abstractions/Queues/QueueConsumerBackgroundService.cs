@@ -94,6 +94,8 @@ public class QueueConsumerBackgroundService<T>(
                     }
 
                     Logger.LogDebug("Invoking handler with payload {payload}", queueMessage.JsonData);
+
+                    // you need this logger scope or in-memory log messages don't appear in Dashboard
                     using (Logger.BeginScope(new Dictionary<string, object> { { "HandlerName", HandlerIdentifier } }))
                     {
                         await _handler.ExecuteAsync(msgObject, stoppingToken);
