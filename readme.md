@@ -99,15 +99,42 @@ public class SomeService(DurableQueue queue)
 
 # Using ScheduledBackgroundService
 
-[ScheduledBackgroundService](Abstractions/ScheduledBackgroundService.cs) runs jobs on a schedule. Create a class that derives from `ManagedBackgroundService` and performs one scheduled execution each time `ExecuteInternalAsync` runs:
+[ScheduledBackgroundService](Abstractions/Scheduling/ScheduledBackgroundService.cs) runs jobs on a schedule. Create a class that derives from `ManagedBackgroundService` and performs one scheduled execution each time `ExecuteInternalAsync` runs:
 
 ```csharp
 public class DbCleanupJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
 {
     protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
-    {        
+    {
         Logger.LogInformation("Running database cleanup job");
         await Task.Delay(100, stoppingToken);
+    }
+}
+
+public class ReindexJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
+{
+    protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
+    {
+        Logger.LogInformation("Running reindex job");
+        await Task.Delay(150, stoppingToken);
+    }
+}
+
+public class WeeklyReportsJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
+{
+    protected override async Task ExecuteInternalAsync(CancellationToken stoppingToken)
+    {
+        Logger.LogInformation("Running weekly reports job");
+        await Task.Delay(200, stoppingToken);
+    }
+}
+
+public class FrequentJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)
+{
+    protected override Task ExecuteInternalAsync(CancellationToken stoppingToken)
+    {
+        Logger.LogInformation("I'm doing frequent work");
+        return Task.CompletedTask;
     }
 }
 ```
@@ -119,7 +146,7 @@ builder.Services.AddScheduledJobs(schedule =>
 {
     schedule.Add<DbCleanupJob>("*1d t[2:00am]");
     schedule.Add<ReindexJob>("d[mon..fri] t[9:30am, 3:30pm]");
-    schedule.Add<WeeklyReportsJob>("d[sat]");
+    schedule.Add<WeeklyReportsJob>("d[sat] tz:America/New_York");
     schedule.Add<FrequentJob>("*5s");
 });
 ```
