@@ -78,3 +78,37 @@
         border-bottom: 1px solid #eee;
         vertical-align: top;
     }
+
+@media (prefers-color-scheme: dark) {
+    .mbs-dashboard-table th,
+    .mbs-dashboard-table td {
+        border-bottom: 1px solid #444;
+    }
+
+    .mbs-status-running {
+        color: #4ade80;
+    }
+
+    .mbs-status-paused {
+        color: #fb923c;
+    }
+
+    .mbs-status-crashed {
+        color: #f87171;
+    }
+
+    .mbs-btn {
+        border: 1px solid #666;
+        background: #2d2d2d;
+        color: #e0e0e0;
+    }
+
+    .mbs-log-row td {
+        background: #1f1f1f;
+    }
+
+    .mbs-logs-table th,
+    .mbs-logs-table td {
+        border-bottom: 1px solid #444;
+    }
+}

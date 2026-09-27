@@ -33,3 +33,17 @@
 .mbs-status-crashed {
     color: darkred;
 }
+
+@media (prefers-color-scheme: dark) {
+    .mbs-status-running {
+        color: #4ade80;
+    }
+
+    .mbs-status-paused {
+        color: #fb923c;
+    }
+
+    .mbs-status-crashed {
+        color: #f87171;
+    }
+}
