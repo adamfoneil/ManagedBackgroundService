@@ -1,0 +1,41 @@
+@using ManagedBackgroundServices.Abstractions.Infrastructure
+@inject IManagedBackgroundServiceProvider BackgroundServices
+
+<div style="display:flex;align-items:center">
+    @foreach (var svc in _services)
+    {
+        <div class="mbs-service-item">
+            <span class="mbs-status-chip @GetStatusCssClass(svc.Status)">
+                <span class="mbs-status-icon" aria-hidden="true">@GetStatusIcon(svc.Status)</span>
+                <span>@svc.HandlerIdentifier</span>
+                <span>@svc.Status</span>
+            </span>            
+        </div>
+    }
+</div>
+
+@code {
+    private ManagedBackgroundService[] _services = [];
+
+    protected override void OnInitialized()
+    {
+        _services = [..BackgroundServices.Services.Where(svc => svc.Status != Status.Running)];
+    }
+
+    private string GetStatusIcon(Status status) => status switch
+    {
+        Status.Running => "✔",
+        Status.Paused => "⏸",
+        Status.Crashed => "✖",
+        _ => "?"
+    };
+
+    private static string GetStatusCssClass(Status status) => status switch
+    {
+        Status.Running => "mbs-status-running",
+        Status.Paused => "mbs-status-paused",
+        Status.Crashed => "mbs-status-crashed",
+        _ => string.Empty
+    };
+
+}

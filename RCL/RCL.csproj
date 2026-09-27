@@ -3,7 +3,17 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>    
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>ManagedBackgroundServices.RCL</PackageId>
+    <Title>Managed Background Services Razor Class Library</Title>
+    <Version>1.0.0</Version>
+    <Authors>Adam O'Neil</Authors>
+    <Company>Adam O'Neil</Company>
+    <Description>Blazor components for monitoring background job health</Description>
+    <Copyright>Copyright (c) 2026 Adam O'Neil</Copyright>
+    <PackageProjectUrl>https://github.com/adamfoneil/ManagedBackgroundService</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/adamfoneil/ManagedBackgroundService</RepositoryUrl>    
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,11 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <SupportedPlatform Include="browser" />
+    <PackageReference Include="ManagedBackgroundServices.Abstractions" Version="1.0.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
+    <SupportedPlatform Include="browser" />
   </ItemGroup>
 
 </Project>

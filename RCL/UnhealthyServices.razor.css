@@ -1,0 +1,35 @@
+.mbs-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+}
+
+.mbs-service-item {
+    margin-right: 0.5rem;
+}
+
+.mbs-status-icon {
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.mbs-service-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 0.4rem;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.mbs-status-running {
+    color: green;
+}
+
+.mbs-status-paused {
+    color: darkorange;
+}
+
+.mbs-status-crashed {
+    color: darkred;
+}
