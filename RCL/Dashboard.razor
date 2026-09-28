@@ -32,7 +32,12 @@
                 </td>
                 <td>
                     <span class="mbs-service-icon" title="@GetServiceTypeLabel(svc)" aria-label="@GetServiceTypeLabel(svc)">@GetServiceTypeIcon(svc)</span>
-                    @handlerIdentifier
+                    <span>@handlerIdentifier</span>
+                    @if (svc is ScheduledBackgroundService scheduledService && scheduledService.RecurrencePattern is not null)
+                    {
+                        <br />
+                        <span class="small">@FormatRecurrencePattern(scheduledService.RecurrencePattern)</span>                        
+                    }
                 </td>
                 <td>
                     <span class="mbs-status-chip @GetStatusCssClass(svc.Status)">
@@ -69,11 +74,12 @@
                     <button class="mbs-btn" @onclick="() => ResumeService(svc)" disabled="@(svc.Status != Status.Paused)">Resume</button>
                 </td>
 
-                <td>
-                    @if (svc is ScheduledBackgroundService scheduledService)
+                <td>                    
+                    @if (svc is ScheduledBackgroundService scheduledService2)
                     {
+                        <br />
                         <span class="small">Next Run:</span><br />
-                        <span>@ConvertToLocalTime(scheduledService.NextRunTime.UtcDateTime).ToString("yyyy-MM-dd HH:mm:ss") | @GetNextRunExpression(scheduledService.NextRunTime)</span>
+                        <span>@ConvertToLocalTime(scheduledService2.NextRunTime.UtcDateTime).ToString("yyyy-MM-dd HH:mm:ss") | @GetNextRunExpression(scheduledService2.NextRunTime)</span>
                     }
                     else if (svc is IQueueConsumerPerformance queueService && queueService.LastConsumedDateTimeUtc.HasValue)
                     {
@@ -253,5 +259,54 @@
         if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes} minutes";
         if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours} hours";
         return $"{(int)timeSpan.TotalDays} days";
+    }
+
+    private static string FormatRecurrencePattern(RecurrencePattern pattern)
+    {
+        var parts = new List<string>();
+
+        if (pattern.Period.HasValue)
+        {
+            parts.Add($"Every {FormatTimeSpan(pattern.Period.Value)}");
+        }
+
+        if (pattern.WeekDays.Length > 0)
+        {
+            var days = string.Join(", ", pattern.WeekDays.Distinct().OrderBy(d => (int)d).Select(d => d.ToString().Substring(0, 3)));
+            parts.Add($"Weekly on {days}");
+        }
+
+        if (pattern.MonthDays.Length > 0)
+        {
+            var days = string.Join(", ", pattern.MonthDays.Distinct().OrderBy(d => d).Select(d => d > 0 ? $"day {d}" : $"day {d} (from end)"));
+            parts.Add($"Monthly on {days}");
+        }
+
+        if (pattern.YearDays.Length > 0)
+        {
+            var days = string.Join(", ", pattern.YearDays.Distinct().OrderBy(d => d).Select(d => d > 0 ? $"day {d}" : $"day {d} (from end)"));
+            parts.Add($"Yearly on {days}");
+        }
+
+        if (pattern.Times.Length > 0 && !(pattern.Times.Length == 1 && pattern.Times[0] == TimeOnly.MinValue))
+        {
+            var times = string.Join(", ", pattern.Times.Distinct().OrderBy(t => t.Ticks).Select(t => t.ToString("HH:mm:ss")));
+            parts.Add($"at {times}");
+        }
+
+        if (pattern.Between.HasValue)
+        {
+            parts.Add($"between {pattern.Between.Value.Start:HH:mm:ss} and {pattern.Between.Value.End:HH:mm:ss}");
+        }
+
+        return parts.Any() ? string.Join(" ", parts) : "Every midnight UTC";
+    }
+
+    private static string FormatTimeSpan(TimeSpan span)
+    {
+        if (span.TotalSeconds < 60) return $"{(int)span.TotalSeconds}s";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours}h";
+        return $"{(int)span.TotalDays}d";
     }
 }

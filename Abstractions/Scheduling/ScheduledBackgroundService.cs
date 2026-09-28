@@ -7,16 +7,24 @@ namespace ManagedBackgroundServices.Abstractions.Scheduling;
 /// Single-job scheduled background service.
 /// Runs one managed background job on a recurrence pattern.
 /// </summary>
-public class ScheduledBackgroundService(
-    ILoggerFactory loggerFactory,
-    TimeProvider timeProvider,
-    RecurrencePattern pattern,
-    ManagedBackgroundService worker) : ManagedBackgroundService(loggerFactory)
+public class ScheduledBackgroundService : ManagedBackgroundService
 {
-    private readonly TimeProvider _timeProvider = timeProvider;
-    private readonly RecurrencePattern _pattern = pattern;
-    private readonly ManagedBackgroundService _worker = worker;
+    private readonly TimeProvider _timeProvider;
+    private readonly RecurrencePattern _pattern;
+    private readonly ManagedBackgroundService _worker;
     private DateTimeOffset _nextRunTime = DateTimeOffset.MinValue;
+
+    public ScheduledBackgroundService(
+        ILoggerFactory loggerFactory,
+        TimeProvider timeProvider,
+        RecurrencePattern pattern,
+        ManagedBackgroundService worker) : base(loggerFactory)
+    {
+        _timeProvider = timeProvider;
+        _pattern = pattern;
+        _worker = worker;
+        RecurrencePattern = pattern;
+    }
 
     /// <summary>
     /// Returns the worker class name for identification in dashboard and logging.
