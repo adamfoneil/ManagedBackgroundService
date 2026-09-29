@@ -23,13 +23,11 @@ public sealed class ScheduledJobsRegistrationTests
 
         using var provider = services.BuildServiceProvider();
         var registry = provider.GetRequiredService<IScheduledJobRegistry>();
-        var managedServices = provider.GetRequiredService<IManagedBackgroundServiceProvider>().Services;
+        var managedServices = provider.GetRequiredService<IManagedBackgroundServiceProvider>().Services.ToList();
 
-        Assert.AreEqual(2, registry.Jobs.Count);
-        CollectionAssert.AreEquivalent(
-            new[] { nameof(FirstScheduledJob), nameof(SecondScheduledJob) },
-            managedServices.Select(x => x.HandlerIdentifier).ToArray());
-        Assert.IsTrue(managedServices.All(x => x is ScheduledBackgroundService));
+        Assert.HasCount(2, registry.Jobs);
+        Assert.HasCount(1, managedServices);
+        Assert.AreEqual("ScheduledJobsExecutor", managedServices[0].HandlerIdentifier);
     }
 
     [TestMethod]
@@ -48,7 +46,7 @@ public sealed class ScheduledJobsRegistrationTests
         }
         catch (InvalidOperationException ex)
         {
-            StringAssert.Contains(ex.Message, nameof(FirstScheduledJob));
+            Assert.Contains(nameof(FirstScheduledJob), ex.Message);
         }
     }
 
@@ -65,7 +63,7 @@ public sealed class ScheduledJobsRegistrationTests
                         x.ImplementationType?.Name == "ManagedBackgroundServicesHost")
             .ToList();
 
-        Assert.AreEqual(1, hostRegistrations.Count);
+        Assert.HasCount(1, hostRegistrations);
     }
 
     private sealed class FirstScheduledJob(ILoggerFactory loggerFactory) : ManagedBackgroundService(loggerFactory)

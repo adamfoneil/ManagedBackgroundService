@@ -4,7 +4,7 @@ namespace WebDemo.BackgroundJobs;
 
 public record SampleMessage(string Content);
 
-public class SampleMessageHandler(ILogger<SampleMessageHandler> logger) : IPayloadBackgroundWorker<SampleMessage>
+public class SampleMessageHandler(ILogger<SampleMessageHandler> logger) : IQueueWorker<SampleMessage>
 {
     private readonly ILogger<SampleMessageHandler> _logger = logger;
 

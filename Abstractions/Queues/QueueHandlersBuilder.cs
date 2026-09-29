@@ -18,7 +18,7 @@ public sealed class QueueHandlersBuilder
 
     public QueueHandlersBuilder Add<TMessage, THandler>()
         where TMessage : notnull
-        where THandler : class, IPayloadBackgroundWorker<TMessage>
+        where THandler : class, IQueueWorker<TMessage>
     {
         var messageType = typeof(TMessage);
         var registration = new QueueHandlerRegistration(messageType, typeof(THandler));

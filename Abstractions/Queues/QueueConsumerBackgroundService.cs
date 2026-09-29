@@ -19,11 +19,11 @@ public interface IQueueConsumerPerformance
 public class QueueConsumerBackgroundService<T>(
     ILoggerFactory loggerFactory,
     DurableQueue persistentQueue,
-    IPayloadBackgroundWorker<T> handler) : ManagedBackgroundService(loggerFactory), IQueueConsumerPerformance
+    IQueueWorker<T> handler) : ManagedBackgroundService(loggerFactory), IQueueConsumerPerformance
     where T : notnull
 {
     private readonly DurableQueue _persistentQueue = persistentQueue;
-    private readonly IPayloadBackgroundWorker<T> _handler = handler;
+    private readonly IQueueWorker<T> _handler = handler;
 
     /// <summary>
     /// Returns the handler class name for identification in dashboard and logging.

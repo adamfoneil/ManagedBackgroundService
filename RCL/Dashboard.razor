@@ -6,6 +6,7 @@
 @using Microsoft.Extensions.Logging
 @inject IManagedBackgroundServiceProvider BackgroundServices
 @inject IInMemoryLogQuery LogQuery
+@inject IScheduledJobRegistry? ScheduledJobRegistry
 
 @if (_logsByHandlerName is null) return;
 
@@ -33,10 +34,13 @@
                 <td>
                     <span class="mbs-service-icon" title="@GetServiceTypeLabel(svc)" aria-label="@GetServiceTypeLabel(svc)">@GetServiceTypeIcon(svc)</span>
                     <span>@handlerIdentifier</span>
-                    @if (svc is ScheduledBackgroundService scheduledService && scheduledService.RecurrencePattern is not null)
-                    {
-                        <br />
-                        <span class="small">@FormatRecurrencePattern(scheduledService.RecurrencePattern)</span>                        
+                    @{
+                        var jobPattern = GetScheduledJobPattern(handlerIdentifier);
+                        if (jobPattern is not null)
+                        {
+                            <br />
+                            <span class="small">@FormatRecurrencePattern(jobPattern)</span>
+                        }
                     }
                 </td>
                 <td>
@@ -75,20 +79,23 @@
                 </td>
 
                 <td>                    
-                    @if (svc is ScheduledBackgroundService scheduledService2)
-                    {
-                        <br />
-                        <span class="small">Next Run:</span><br />
-                        <span>@ConvertToLocalTime(scheduledService2.NextRunTime.UtcDateTime).ToString("yyyy-MM-dd HH:mm:ss") | @GetNextRunExpression(scheduledService2.NextRunTime)</span>
-                    }
-                    else if (svc is IQueueConsumerPerformance queueService && queueService.LastConsumedDateTimeUtc.HasValue)
-                    {
-                        <span class="small">Last Run:</span><br />
-                        <span>@ConvertToLocalTime(queueService.LastConsumedDateTimeUtc.Value).ToString("yyyy-MM-dd HH:mm:ss") | @AgeExpression(queueService.LastConsumedDateTimeUtc.Value)</span>
-                    }
-                    else
-                    {
-                        <span>@ConvertToLocalTime(svc.StatusDateTimeUtc).ToString("yyyy-MM-dd HH:mm:ss") | @AgeExpression(svc.StatusDateTimeUtc)</span>
+                    @{
+                        var nextRunTime = GetScheduledJobNextRunTime(svc);
+                        if (nextRunTime.HasValue)
+                        {
+                            <br />
+                            <span class="small">Next Run:</span><br />
+                            <span>@ConvertToLocalTime(nextRunTime.Value.UtcDateTime).ToString("yyyy-MM-dd HH:mm:ss") | @GetNextRunExpression(nextRunTime.Value)</span>
+                        }
+                        else if (svc is IQueueConsumerPerformance queueService && queueService.LastConsumedDateTimeUtc.HasValue)
+                        {
+                            <span class="small">Last Run:</span><br />
+                            <span>@ConvertToLocalTime(queueService.LastConsumedDateTimeUtc.Value).ToString("yyyy-MM-dd HH:mm:ss") | @AgeExpression(queueService.LastConsumedDateTimeUtc.Value)</span>
+                        }
+                        else
+                        {
+                            <span>@ConvertToLocalTime(svc.StatusDateTimeUtc).ToString("yyyy-MM-dd HH:mm:ss") | @AgeExpression(svc.StatusDateTimeUtc)</span>
+                        }
                     }
                 </td>
                 <td>
@@ -208,15 +215,13 @@
     private static string GetServiceTypeIcon(ManagedBackgroundService service) => service switch
     {
         IQueueConsumerPerformance => "📋",
-        ScheduledBackgroundService => "⏱",
-        _ => ""
+        _ => service.GetType().Name.EndsWith("Wrapper") ? "⏱" : ""
     };
 
     private static string GetServiceTypeLabel(ManagedBackgroundService service) => service switch
     {
         IQueueConsumerPerformance => "Queue Consumer",
-        ScheduledBackgroundService => "Scheduled Job",
-        _ => "Background Service"
+        _ => service.GetType().Name.EndsWith("Wrapper") ? "Scheduled Job" : "Background Service"
     };
 
     private void ToggleLogs(string serviceType)
@@ -308,5 +313,30 @@
         if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m";
         if (span.TotalHours < 24) return $"{(int)span.TotalHours}h";
         return $"{(int)span.TotalDays}d";
+    }
+
+    private RecurrencePattern? GetScheduledJobPattern(string handlerIdentifier)
+    {
+        if (ScheduledJobRegistry is null) return null;
+
+        return ScheduledJobRegistry.Jobs
+            .FirstOrDefault(j => j.JobType.Name == handlerIdentifier)
+            ?.Pattern;
+    }
+
+    private DateTimeOffset? GetScheduledJobNextRunTime(ManagedBackgroundService service)
+    {
+        // Try to get the NextRunTime property via reflection if it's a scheduled wrapper
+        var nextRunTimeProp = service.GetType().GetProperty("NextRunTime");
+        if (nextRunTimeProp is not null)
+        {
+            var value = nextRunTimeProp.GetValue(service);
+            if (value is DateTimeOffset dateTimeOffset)
+            {
+                return dateTimeOffset;
+            }
+        }
+
+        return null;
     }
 }

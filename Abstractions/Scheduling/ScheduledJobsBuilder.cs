@@ -9,6 +9,11 @@ public interface IScheduledJobRegistry
     IReadOnlyCollection<ScheduledJobRegistration> Jobs { get; }
 }
 
+internal sealed class ScheduledJobRegistry(IEnumerable<ScheduledJobRegistration> jobs) : IScheduledJobRegistry
+{
+    public IReadOnlyCollection<ScheduledJobRegistration> Jobs { get; } = [.. jobs];
+}
+
 public sealed class ScheduledJobsBuilder
 {
     private readonly Dictionary<Type, ScheduledJobRegistration> _jobs = [];
@@ -30,9 +35,4 @@ public sealed class ScheduledJobsBuilder
 
         return this;
     }
-}
-
-internal sealed class ScheduledJobRegistry(IEnumerable<ScheduledJobRegistration> jobs) : IScheduledJobRegistry
-{
-    public IReadOnlyCollection<ScheduledJobRegistration> Jobs { get; } = [.. jobs];
 }

@@ -68,29 +68,6 @@ public static class ServiceExtensions
     }
 
     /// <summary>
-    /// Registers a queue consumer for a specific message type.
-    /// Can be called multiple times to register multiple queue consumers for different message types.
-    /// </summary>
-    /// <typeparam name="TMessage">The message type this consumer handles</typeparam>
-    /// <typeparam name="TWorker">The IPayloadBackgroundWorker implementation</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <param name="queue">The durable queue instance</param>
-    /// <returns>The service collection for chaining</returns>
-    public static IServiceCollection AddQueueConsumer<TMessage, TWorker>(
-        this IServiceCollection services, 
-        DurableQueue queue)
-        where TMessage : notnull
-        where TWorker : class, IPayloadBackgroundWorker<TMessage>
-    {
-        ArgumentNullException.ThrowIfNull(queue);
-
-        AddQueueInfrastructure(services, queue);
-        RegisterQueueConsumer<TMessage, TWorker>(services, _ => queue);
-
-        return services;
-    }
-
-    /// <summary>
     /// Registers a queue consumer for a specific message type, resolving the queue from DI.
     /// The DurableQueue must already be registered in the service collection, such as via AddDurableQueue or AddQueue.
     /// Can be called multiple times to register multiple queue consumers for different message types.
@@ -102,68 +79,10 @@ public static class ServiceExtensions
     public static IServiceCollection AddQueueConsumer<TMessage, TWorker>(
         this IServiceCollection services)
         where TMessage : notnull
-        where TWorker : class, IPayloadBackgroundWorker<TMessage>
+        where TWorker : class, IQueueWorker<TMessage>
     {
         AddManagedBackgroundServiceInfrastructure(services);
         RegisterQueueConsumer<TMessage, TWorker>(services, sp => sp.GetRequiredService<DurableQueue>());
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers a queue consumer for a specific message type with a DurableQueue factory.
-    /// Can be called multiple times to register multiple queue consumers for different message types.
-    /// </summary>
-    /// <typeparam name="TMessage">The message type this consumer handles</typeparam>
-    /// <typeparam name="TWorker">The IPayloadBackgroundWorker implementation</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <param name="queueFactory">Factory function to create the durable queue</param>
-    /// <returns>The service collection for chaining</returns>
-    public static IServiceCollection AddQueueConsumer<TMessage, TWorker>(
-        this IServiceCollection services,
-        Func<IServiceProvider, DurableQueue> queueFactory)
-        where TMessage : notnull
-        where TWorker : class, IPayloadBackgroundWorker<TMessage>
-    {
-        ArgumentNullException.ThrowIfNull(queueFactory);
-
-        AddQueueInfrastructure(services, queueFactory);
-        RegisterQueueConsumer<TMessage, TWorker>(services, queueFactory);
-
-        return services;
-    }
-
-    private static void AddQueueInfrastructure(IServiceCollection services, DurableQueue queue)
-    {
-        services.AddSingleton(queue);
-        AddManagedBackgroundServiceInfrastructure(services);
-    }
-
-    private static void AddQueueInfrastructure(IServiceCollection services, Func<IServiceProvider, DurableQueue> queueFactory)
-    {
-        services.AddSingleton(queueFactory);
-        AddManagedBackgroundServiceInfrastructure(services);
-    }
-
-    /// <summary>
-    /// Registers a DurableQueue instance in the dependency injection container.
-    /// This enables injection of the queue throughout your application and provides cleaner
-    /// integration with other services.
-    /// </summary>
-    /// <typeparam name="TQueue">The DurableQueue implementation type</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <param name="queue">The queue instance to register</param>
-    /// <returns>The service collection for chaining</returns>
-    public static IServiceCollection AddDurableQueue<TQueue>(
-        this IServiceCollection services,
-        TQueue queue)
-        where TQueue : DurableQueue
-    {
-        ArgumentNullException.ThrowIfNull(queue);
-
-        services.AddSingleton<TQueue>(queue);
-        services.AddSingleton<DurableQueue>(sp => sp.GetRequiredService<TQueue>());
-        AddManagedBackgroundServiceInfrastructure(services);
 
         return services;
     }
@@ -194,7 +113,7 @@ public static class ServiceExtensions
         IServiceCollection services,
         Func<IServiceProvider, DurableQueue> queueResolver)
         where TMessage : notnull
-        where TWorker : class, IPayloadBackgroundWorker<TMessage>
+        where TWorker : class, IQueueWorker<TMessage>
     {
         services.AddSingleton<TWorker>();
         services.AddSingleton<QueueConsumerBackgroundService<TMessage>>(sp =>
@@ -254,84 +173,18 @@ public static class ServiceExtensions
 
             services.AddSingleton(registration);
             services.AddSingleton(registration.JobType);
-            services.AddSingleton<ManagedBackgroundService>(sp =>
-                new ScheduledBackgroundService(
-                    sp.GetRequiredService<ILoggerFactory>(),
-                    timeProvider,
-                    registration.Pattern,
-                    (ManagedBackgroundService)sp.GetRequiredService(registration.JobType)));
         }
 
-        return services;
-    }
+        // Register the TimeProvider as a singleton so it can be injected into ScheduledJobsExecutor
+        services.TryAddSingleton(timeProvider);
 
-    /// <summary>
-    /// Registers a scheduled job that runs on a recurrence pattern.
-    /// Can be called multiple times to register multiple scheduled jobs with different patterns.
-    /// </summary>
-    /// <typeparam name="TWorker">The IBackgroundWorker implementation</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <param name="patternString">The recurrence pattern string (parsed via RecurrencePattern.Parse)</param>
-    /// <returns>The service collection for chaining</returns>
-    public static IServiceCollection AddScheduledJob<TWorker>(
-        this IServiceCollection services,
-        string patternString)
-        where TWorker : class, IBackgroundWorker
-    {
-        if (string.IsNullOrWhiteSpace(patternString))
-            throw new ArgumentException("Pattern string cannot be null or empty.", nameof(patternString));
-
-        var pattern = RecurrencePattern.Parse(patternString);
-
-        AddManagedBackgroundServiceInfrastructure(services);
-        services.AddSingleton<TWorker>();
-        services.AddSingleton<ManagedBackgroundService>(sp =>
-            new ScheduledBackgroundService(
-                sp.GetRequiredService<ILoggerFactory>(),
-                TimeProvider.System,
-                pattern,
-                new BackgroundWorkerAdapter<TWorker>(
-                    sp.GetRequiredService<ILoggerFactory>(),
-                    sp.GetRequiredService<TWorker>())));
+        // Register a single ScheduledJobsExecutor to manage all jobs
+        services.AddSingleton<ScheduledJobsExecutor>();
+        services.AddSingleton<ManagedBackgroundService>(sp => sp.GetRequiredService<ScheduledJobsExecutor>());
+        services.AddHostedService(sp => sp.GetRequiredService<ScheduledJobsExecutor>());
 
         return services;
-    }
-
-    /// <summary>
-    /// Registers a scheduled job that runs on a recurrence pattern with a custom TimeProvider.
-    /// Can be called multiple times to register multiple scheduled jobs with different patterns.
-    /// </summary>
-    /// <typeparam name="TWorker">The IBackgroundWorker implementation</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <param name="patternString">The recurrence pattern string (parsed via RecurrencePattern.Parse)</param>
-    /// <param name="timeProvider">The time provider to use for scheduling</param>
-    /// <returns>The service collection for chaining</returns>
-    public static IServiceCollection AddScheduledJob<TWorker>(
-        this IServiceCollection services,
-        string patternString,
-        TimeProvider timeProvider)
-        where TWorker : class, IBackgroundWorker
-    {
-        if (string.IsNullOrWhiteSpace(patternString))
-            throw new ArgumentException("Pattern string cannot be null or empty.", nameof(patternString));
-        if (timeProvider is null)
-            throw new ArgumentNullException(nameof(timeProvider));
-
-        var pattern = RecurrencePattern.Parse(patternString);
-
-        AddManagedBackgroundServiceInfrastructure(services);
-        services.AddSingleton<TWorker>();
-        services.AddSingleton<ManagedBackgroundService>(sp =>
-            new ScheduledBackgroundService(
-                sp.GetRequiredService<ILoggerFactory>(),
-                timeProvider,
-                pattern,
-                new BackgroundWorkerAdapter<TWorker>(
-                    sp.GetRequiredService<ILoggerFactory>(),
-                    sp.GetRequiredService<TWorker>())));
-
-        return services;
-    }
+    }  
 
     public static void AddInMemoryLogger(this IServiceCollection services, int maxCapacity = DefaultInMemoryLogCapacity)
     {
@@ -374,18 +227,6 @@ public static class ServiceExtensions
         services.AddSingleton(provider);
         services.TryAddSingleton<IInMemoryLogQuery>(sp => sp.GetRequiredService<InMemoryLoggerProvider>());
     }
-}
-
-internal sealed class BackgroundWorkerAdapter<TWorker>(
-    ILoggerFactory loggerFactory,
-    TWorker worker) : ManagedBackgroundService(loggerFactory)
-    where TWorker : class, IBackgroundWorker
-{
-    private readonly TWorker _worker = worker;
-
-    public override string HandlerIdentifier => _worker.GetType().Name;
-
-    protected override Task ExecuteInternalAsync(CancellationToken stoppingToken) => _worker.ExecuteAsync(stoppingToken);
 }
 
 internal sealed class QueueBuilderRegistrationMarker;

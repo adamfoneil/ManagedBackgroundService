@@ -112,17 +112,17 @@ public sealed class QueueRegistrationTests
     private sealed record FirstMessage(string Value);
     private sealed record SecondMessage(string Value);
 
-    private sealed class FirstHandler : IPayloadBackgroundWorker<FirstMessage>
+    private sealed class FirstHandler : IQueueWorker<FirstMessage>
     {
         public Task ExecuteAsync(FirstMessage payload, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
-    private sealed class AlternateFirstHandler : IPayloadBackgroundWorker<FirstMessage>
+    private sealed class AlternateFirstHandler : IQueueWorker<FirstMessage>
     {
         public Task ExecuteAsync(FirstMessage payload, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
-    private sealed class SecondHandler : IPayloadBackgroundWorker<SecondMessage>
+    private sealed class SecondHandler : IQueueWorker<SecondMessage>
     {
         public Task ExecuteAsync(SecondMessage payload, CancellationToken cancellationToken) => Task.CompletedTask;
     }

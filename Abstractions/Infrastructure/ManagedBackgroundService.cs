@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ManagedBackgroundServices.Abstractions.Scheduling;
 
 namespace ManagedBackgroundServices.Abstractions.Infrastructure;
 
@@ -59,8 +58,7 @@ public abstract class ManagedBackgroundService : BackgroundService
 
     public Status Status { get; private set; }
     public DateTime StatusDateTimeUtc { get; private set; }
-    public Exception? Exception { get; private set; }
-    public RecurrencePattern? RecurrencePattern { get; internal set; }
+    public Exception? Exception { get; private set; }    
 
     /// <summary>
     /// causes a Disabled service to start its inner loop again (assuming it's not Stopped)
@@ -128,7 +126,7 @@ public abstract class ManagedBackgroundService : BackgroundService
                 }
             }
         }
-        catch (Exception exc) when (exc is OperationCanceledException)
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
             // this happens during restarts/shutdown of host app
             Pause();
