@@ -29,9 +29,10 @@ public interface IInMemoryLogQuery
 
     IReadOnlyList<LogEntry> GetLogsByHandler(string handlerName, int maxResults = 0, int minutesBack = 0, Func<LogEntry, bool>? criteria = null)
     {
-        Func<LogEntry, bool> handlerFilter = e => e.HandlerName == handlerName;
+        bool handlerFilter(LogEntry e) => e.HandlerName == handlerName;
+
         var combinedCriteria = criteria == null 
-            ? handlerFilter 
+            ? (Func<LogEntry, bool>)handlerFilter 
             : e => handlerFilter(e) && criteria(e);
         return GetLogs(maxResults: maxResults, minutesBack: minutesBack, criteria: combinedCriteria);
     }
