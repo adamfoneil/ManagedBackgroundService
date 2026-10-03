@@ -8,13 +8,13 @@ namespace ManagedBackgroundServices.Abstractions.Logging;
 /// </summary>
 public class LogEntry
 {
-    public DateTime TimestampUtc { get; set; }
+    public DateTime TimestampUtc { get; set; }    
     public TimeSpan GetAge(DateTime from) => from.Subtract(TimestampUtc);
     public LogLevel Level { get; set; }
     public string Category { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public Exception? Exception { get; set; }
-    public IReadOnlyList<object> Scopes { get; set; } = new List<object>();
+    public IReadOnlyList<object> Scopes { get; set; } = [];
 
     /// <summary>
     /// Extracts the HandlerName from the Scopes if present, returns null otherwise
